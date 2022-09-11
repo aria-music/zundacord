@@ -1,0 +1,10 @@
+version: "3.9"
+
+services:
+  zundacord:
+    build:
+      target: app
+    user: node
+  
+  voicevox:
+    image: voicevox/voicevox_engine:cpu-ubuntu20.04-latest
