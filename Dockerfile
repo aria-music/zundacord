@@ -2,6 +2,10 @@
 
 FROM node:18-bullseye as runtime
 
+RUN apt-get update && export DEBIAN_FRONTEND=noninteractive && \
+    apt-get -y install --no-install-recommends ffmpeg && \
+    rm -rf /var/lib/apt/lists/*
+
 
 # ===== APP ====
 

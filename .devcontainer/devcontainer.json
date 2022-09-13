@@ -36,5 +36,13 @@
 
 	"features": {
 		"fish": "latest"
+	},
+
+	"customizations": {
+		"vscode": {
+			"extensions": [
+				"dbaeumer.vscode-eslint"
+			]
+		}
 	}
 }

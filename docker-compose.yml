@@ -5,6 +5,13 @@ services:
     build:
       target: app
     user: node
+    environment:
+      ZUNDACORD_DISCORD_TOKEN: ${ZUNDACORD_DISCORD_TOKEN}
+      ZUNDACORD_VOICEVOX_API_ENDPOINT: "http://voicevox:50021"
+    restart: unless-stopped
   
   voicevox:
     image: voicevox/voicevox_engine:cpu-ubuntu20.04-latest
+    ports:
+      - "80:50021"
+    restart: unless-stopped
