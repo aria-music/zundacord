@@ -11,17 +11,17 @@ export class VoiceVoxClient {
         this.apiEndpoint = apiEndpoint
     }
 
-    async getAudio(text: string): Promise<ArrayBuffer> {
-        const query = await this.audioQuery(text)
-        const audioBuf = await this.synthesis(query)
+    async getAudio(text: string, speakerId: number = 3): Promise<ArrayBuffer> {
+        const query = await this.audioQuery(text, speakerId)
+        const audioBuf = await this.synthesis(query, speakerId)
         return audioBuf
     }
 
-    async audioQuery(text: string): Promise<AudioQuery> {
+    async audioQuery(text: string, speakerId: number): Promise<AudioQuery> {
         const url = new URL("/audio_query", this.apiEndpoint)
         const resp = await axios.post(url.toString(), null, {
             params: {
-                speaker: 3,
+                speaker: speakerId,
                 text: text
             }
         })
@@ -29,12 +29,12 @@ export class VoiceVoxClient {
         return resp.data as AudioQuery
     }
 
-    async synthesis(query: AudioQuery): Promise<ArrayBuffer> {
+    async synthesis(query: AudioQuery, speakerId: number): Promise<ArrayBuffer> {
         const url = new URL("/synthesis", this.apiEndpoint)
         const resp = await axios.post(url.toString(), query, {
             responseType: "arraybuffer",
             params: {
-                speaker: 3
+                speaker: speakerId
             }
         })
 
