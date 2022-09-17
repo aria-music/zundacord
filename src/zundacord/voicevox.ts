@@ -4,8 +4,29 @@ interface AudioQuery {
     _audioQueryBrand: any
 }
 
+interface Speaker {
+    readonly name: string
+    readonly speaker_uuid: string
+    readonly styles: {
+        readonly name: string
+        readonly id: number
+    }[]
+    readonly version?: string
+}
+
+interface StyledSpeaker {
+    readonly styleId: number
+    readonly styleName: string
+    readonly speaker: Speaker
+}
+
+
 export class VoiceVoxClient {
     private readonly apiEndpoint: string
+
+    private cachedSpeakers?: Speaker[]
+    private cachedSpeakersUUIDMap?: Map<string, Speaker>
+    private cachedSpeakersIdMap?: Map<string, StyledSpeaker>
 
     constructor(apiEndpoint: string) {
         this.apiEndpoint = apiEndpoint
@@ -15,6 +36,58 @@ export class VoiceVoxClient {
         const query = await this.audioQuery(text, speakerId)
         const audioBuf = await this.synthesis(query, speakerId)
         return audioBuf
+    }
+
+    async updateCachedSpeakers() {
+        this.cachedSpeakers = await this.speakers()
+
+        // map them
+        this.cachedSpeakersUUIDMap = new Map()
+        this.cachedSpeakersIdMap = new Map()
+
+        this.cachedSpeakers.map((s) => {
+            this.cachedSpeakersUUIDMap?.set(s.speaker_uuid, s)
+            s.styles.map((st) => {
+                this.cachedSpeakersIdMap?.set(`${st.id}`, {
+                    styleId: st.id,
+                    styleName: st.name,
+                    speaker: s
+                })
+            })
+        })
+    }
+
+    async getSpeakers(): Promise<Speaker[]> {
+        if (!this.cachedSpeakers) {
+            await this.updateCachedSpeakers()
+        }
+
+        // TODO: better typing
+        // @ts-ignore
+        return this.cachedSpeakers
+    }
+
+    async getSpeakerByUUID(uuid: string): Promise<Speaker | undefined> {
+        if (!this.cachedSpeakersUUIDMap) {
+            await this.updateCachedSpeakers()
+        }
+
+        return this.cachedSpeakersUUIDMap?.get(uuid)
+    }
+
+    async getSpeakerById(id: string): Promise<StyledSpeaker | undefined> {
+        if (!this.cachedSpeakersIdMap) {
+            await this.updateCachedSpeakers()
+        }
+
+        return this.cachedSpeakersIdMap?.get(id)
+    }
+
+    async speakers(): Promise<Speaker[]> {
+        const url = new URL("/speakers", this.apiEndpoint)
+        const resp = await axios.get(url.toString())
+
+        return resp.data as Speaker[]
     }
 
     async audioQuery(text: string, speakerId: number): Promise<AudioQuery> {

@@ -3,7 +3,7 @@ import { VoiceVoxClient } from "./voicevox";
 import { Readable } from "stream";
 import { once } from 'node:events'
 
-const VOICE_ID_DEFAULT = 3
+const SPEAKER_STYLE_ID_DEFAULT = 3
 
 export class Player {
     private readonly client: VoiceVoxClient
@@ -15,7 +15,7 @@ export class Player {
     private readonly audioQueueSize: number = 5
 
     private running: boolean = false
-    private speakerId: number = VOICE_ID_DEFAULT
+    private speakerStyleId: number = SPEAKER_STYLE_ID_DEFAULT
 
     constructor(client: VoiceVoxClient) {
         this.client = client
@@ -27,8 +27,8 @@ export class Player {
         vc.subscribe(this.audioPlayer)
     }
 
-    setSpeaker(speakerId: number) {
-        this.speakerId = speakerId
+    setSpeakerStyle(speakerStyleId: number) {
+        this.speakerStyleId = speakerStyleId
     }
 
     skipCurrentMessage() {
@@ -51,7 +51,7 @@ export class Player {
             return
         }
 
-        this.audioQueue.push(this.client.getAudio(msg, this.speakerId))
+        this.audioQueue.push(this.client.getAudio(msg, this.speakerStyleId))
         this.handleAudioQueue()
     }
 
