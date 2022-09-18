@@ -1,7 +1,7 @@
 import { entersState, getVoiceConnection, joinVoiceChannel, VoiceConnectionStatus } from "@discordjs/voice"
 import { ActionRowBuilder, ButtonBuilder, ButtonInteraction, ButtonStyle, Client, CommandInteraction, EmbedBuilder, GatewayIntentBits, Interaction, Message, Routes, SelectMenuBuilder, SelectMenuInteraction, SlashCommandBuilder } from "discord.js"
 import { getReadableString } from "./utils"
-import { VoiceVoxClient } from "./voicevox"
+import { StyledSpeaker, VoiceVoxClient } from "./voicevox"
 import { Player } from "./player"
 import { IConfigManager, JsonConfig } from "./config"
 
@@ -129,8 +129,14 @@ export class Zundacord {
         })
     }
 
-    async slashVoice(interaction: CommandInteraction) {
+    async slashVoice(interaction: CommandInteraction<"cached">) {
         console.log("voice")
+
+        const playerStyleId = await this.config.getMemberVoiceStyleId(interaction.guildId, interaction.user.id)
+        let speaker: StyledSpeaker | undefined
+        if (playerStyleId !== undefined) {
+            speaker = await this.voicevox.getSpeakerById(`${playerStyleId}`)
+        }
 
         interaction.reply({
             ephemeral: true,
@@ -138,6 +144,18 @@ export class Zundacord {
                 new EmbedBuilder()
                     .setColor(COLOR_ACTION)
                     .setTitle("Select your voice!")
+                    .setFields(
+                        {
+                            "name": "Speaker",
+                            "value": speaker?.speaker.name || "(Not set)",
+                            "inline": true,
+                        },
+                        {
+                            "name": "Style",
+                            "value": speaker?.styleName || "(Not set)",
+                            "inline": true,
+                        },
+                    )
             ],
             components: [
                 await this.getVoiceSpeakerSelectMenu()
@@ -335,8 +353,19 @@ export class Zundacord {
             embeds: [
                 new EmbedBuilder()
                     .setColor(COLOR_SUCCESS)
-                    .setTitle("Voice is set")
-                    .setDescription(`Voice is set to **${speaker.speaker.name}** (\`${speaker.styleName}\`)`)
+                    .setTitle("Voice is set!")
+                    .setFields(
+                        {
+                            "name": "Speaker",
+                            "value": speaker.speaker.name,
+                            "inline": true,
+                        },
+                        {
+                            "name": "Style",
+                            "value": speaker.styleName,
+                            "inline": true,
+                        },
+                    )
             ],
             components: []
         })

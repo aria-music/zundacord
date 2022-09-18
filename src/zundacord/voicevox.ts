@@ -14,7 +14,7 @@ interface Speaker {
     readonly version?: string
 }
 
-interface StyledSpeaker {
+export interface StyledSpeaker {
     readonly styleId: number
     readonly styleName: string
     readonly speaker: Speaker
