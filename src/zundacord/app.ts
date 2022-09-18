@@ -346,19 +346,6 @@ export class Zundacord {
     async buttonSpeakerStyleSeleceted(interaction: ButtonInteraction<"cached">) {
         const styleId = interaction.customId.replace(/^speakerStyleSelected\//, "")
 
-        const player = this.guildPlayers.get(interaction.guildId)
-        if (!player) {
-            interaction.update({
-                embeds: [
-                    new EmbedBuilder()
-                        .setColor(COLOR_FAILURE)
-                        .setTitle("Cannot set voice")
-                        .setDescription("Join the voice and call /join first")
-                ],
-            })
-            return
-        }
-
         const speaker = await this.voicevox.getSpeakerById(styleId)
         if (!speaker) {
             interaction.update({
