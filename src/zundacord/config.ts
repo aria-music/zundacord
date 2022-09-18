@@ -20,7 +20,7 @@ export interface IConfigManager {
 }
 
 export class JsonConfig implements IConfigManager {
-    private configFile = "config.json"
+    private configFile = "config/config.json"
 
     // @ts-ignore
     private config: Config
