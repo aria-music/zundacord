@@ -1,13 +1,17 @@
-version: "3.9"
+version: '3.9'
 
 services:
   zundacord:
     build:
       target: app
-    user: node
+    init: true
     environment:
       ZUNDACORD_DISCORD_TOKEN: ${ZUNDACORD_DISCORD_TOKEN}
       ZUNDACORD_VOICEVOX_API_ENDPOINT: "http://voicevox:50021"
+    volumes:
+      - type: bind
+        source: ./config
+        target: /workspaces/zundacord/config
     restart: unless-stopped
   
   voicevox:

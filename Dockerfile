@@ -16,10 +16,11 @@ COPY --chown=node . /workspaces/zundacord
 WORKDIR /workspaces/zundacord
 
 # make ready
-RUN su node -c "npm ci && npm run build"
+RUN su node -c "npm run prod"
 
 USER node
-CMD [ "node", "lib/index.js" ]
+ENTRYPOINT []
+CMD [ "node", "." ]
 
 
 # ===== DEVELOP =====
