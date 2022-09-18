@@ -20,6 +20,10 @@ export interface StyledSpeaker {
     readonly speaker: Speaker
 }
 
+export interface SpeakerInfo {
+    readonly policy: string
+}
+
 
 export class VoiceVoxClient {
     private readonly apiEndpoint: string
@@ -112,5 +116,16 @@ export class VoiceVoxClient {
         })
 
         return resp.data as ArrayBuffer
+    }
+
+    async speakerInfo(speakerUuid: string): Promise<SpeakerInfo> {
+        const url = new URL("/speaker_info", this.apiEndpoint)
+        const resp = await axios.get(url.toString(), {
+            params: {
+                speaker_uuid: speakerUuid
+            }
+        })
+
+        return resp.data as SpeakerInfo
     }
 }

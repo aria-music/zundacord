@@ -8,7 +8,6 @@ import { IConfigManager, JsonConfig } from "./config"
 const COLOR_SUCCESS = 0x47ff94
 const COLOR_FAILURE = 0xff4a47
 const COLOR_ACTION = 0x45b5ff
-const DEFAULT_VOICE_STYLE_ID = 3 // ずんだもん ノーマル
 
 export class Zundacord {
     private readonly token: string
@@ -122,7 +121,9 @@ export class Zundacord {
 
         let styleId = await this.config.getMemberVoiceStyleId(msg.guildId, msg.author.id)
         if (styleId === undefined) {
-            styleId = DEFAULT_VOICE_STYLE_ID
+            // user didn't call /voice before,
+            // means they haven't agreed to tos yet
+            return
         }
 
         player.queueMessage({
@@ -143,21 +144,7 @@ export class Zundacord {
         interaction.reply({
             ephemeral: true,
             embeds: [
-                new EmbedBuilder()
-                    .setColor(COLOR_ACTION)
-                    .setTitle("Select your voice!")
-                    .setFields(
-                        {
-                            "name": "Speaker",
-                            "value": speaker?.speaker.name || "(Not set)",
-                            "inline": true,
-                        },
-                        {
-                            "name": "Style",
-                            "value": speaker?.styleName || "(Not set)",
-                            "inline": true,
-                        },
-                    )
+                this.embedSelectVoiceHeader(speaker)
             ],
             components: [
                 await this.getVoiceSpeakerSelectMenu()
@@ -266,10 +253,24 @@ export class Zundacord {
         })
     }
 
-    async selectMenuSpeakerSelected(interaction: SelectMenuInteraction) {
+    async selectMenuSpeakerSelected(interaction: SelectMenuInteraction<"cached">) {
         const speakerUuid = interaction.values[0]
 
+        const currentUserSpeakerStyle = await this.config.getMemberVoiceStyleId(interaction.guildId, interaction.user.id)
+        let speaker: StyledSpeaker | undefined
+        if (currentUserSpeakerStyle) {
+            speaker = await this.voicevox.getSpeakerById(`${currentUserSpeakerStyle}`)
+        }
+        const info = await this.voicevox.speakerInfo(speakerUuid)
+
         interaction.update({
+            embeds: [
+                this.embedSelectVoiceHeader(speaker),
+                new EmbedBuilder()
+                    .setColor(COLOR_ACTION)
+                    .setTitle("You need to agree to the terms of service")
+                    .setDescription(info.policy)
+            ],
             components: [
                 await this.getVoiceSpeakerSelectMenu(speakerUuid),
                 ...await this.getVoiceSpeakerStyleButtons(speakerUuid)
@@ -371,6 +372,24 @@ export class Zundacord {
             ],
             components: []
         })
+    }
+
+    embedSelectVoiceHeader(speaker?: StyledSpeaker): EmbedBuilder {
+        return new EmbedBuilder()
+            .setColor(COLOR_ACTION)
+            .setTitle("Select your voice!")
+            .setFields(
+                {
+                    "name": "Speaker",
+                    "value": speaker?.speaker.name || "(Not set)",
+                    "inline": true,
+                },
+                {
+                    "name": "Style",
+                    "value": speaker?.styleName || "(Not set)",
+                    "inline": true,
+                },
+            )
     }
 
     async registerCommands() {
