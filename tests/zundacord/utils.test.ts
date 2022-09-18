@@ -10,7 +10,9 @@ test.each([
     ["<:hello:1234567890> 😎 <:hello:1234567890> hello 🤔 <:hello:1234567890> 🤔", "hello"],
     ["12345hello54321", "12345hello54321"],
     ["プロロのキレ良し？", "プロロのキレ良し？"],
-    ["プロロのキレ良し!?", "プロロのキレ良し!?"]
+    ["プロロのキレ良し!?", "プロロのキレ良し!?"],
+    ["Visit https://sarisia.cc", "Visit"],
+    ["Visit http://sarisia.cc", "Visit"]
 ])("getReadableString(%s)", (str, expected) => {
     expect(getReadableString(str)).toBe(expected)
 })
