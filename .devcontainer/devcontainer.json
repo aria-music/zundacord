@@ -8,6 +8,7 @@
 	// The .devcontainer/docker-compose.yml file contains any overrides you need/want to make.
 	"dockerComposeFile": [
 		"../docker-compose.yml",
+		// "../docker-compose.gpu.yml", // in case you want gpu enabled
 		"docker-compose.yml"
 	],
 

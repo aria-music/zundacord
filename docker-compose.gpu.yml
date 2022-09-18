@@ -1,0 +1,11 @@
+version: '3.9'
+
+services:
+  voicevox:
+    image: voicevox/voicevox_engine:nvidia-ubuntu20.04-latest
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              capabilities: [gpu]
