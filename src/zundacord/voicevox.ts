@@ -61,6 +61,15 @@ export class VoiceVoxClient {
         })
     }
 
+    async doInitializeSpeaker(styleId: string) {
+        // TODO: is_initialized_speaker が true でも initialize_speaker を送ると
+        // 毎回初期化が走るっぽい. API のバグなのか仕様なのか不明なので, 調査が必要
+        if (!await this.isInitializedSpeaker(styleId)) {
+            console.log("need initialize")
+            this.initializeSpeaker(styleId)
+        }
+    }
+
     async getSpeakers(): Promise<Speaker[]> {
         if (!this.cachedSpeakers) {
             await this.updateCachedSpeakers()
@@ -127,5 +136,28 @@ export class VoiceVoxClient {
         })
 
         return resp.data as SpeakerInfo
+    }
+
+    async initializeSpeaker(styleId: string): Promise<void> {
+        const url = new URL("/initialize_speaker", this.apiEndpoint)
+        await axios.post(url.toString(), undefined, {
+            params: {
+                speaker: styleId
+            }
+        })
+
+        console.log("init done")
+    }
+
+    async isInitializedSpeaker(styleId: string): Promise<boolean> {
+        const url = new URL("/is_initialized_speaker", this.apiEndpoint)
+        const resp = await axios.get(url.toString(), {
+            params: {
+                speaker: styleId
+            }
+        })
+
+        console.log(`initialized: ${resp.data}`)
+        return resp.data as boolean
     }
 }

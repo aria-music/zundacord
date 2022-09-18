@@ -352,6 +352,9 @@ export class Zundacord {
         }
 
         this.config.setMemberVoiceStyleId(interaction.guildId, interaction.user.id, speaker.styleId)
+        // TODO: this is useless at this moment due to VOICEVOX engine's limitation
+        // see #3
+        this.voicevox.doInitializeSpeaker(`${speaker.styleId}`)
         await interaction.update({
             embeds: [
                 new EmbedBuilder()
