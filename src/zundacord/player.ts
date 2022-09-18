@@ -2,20 +2,23 @@ import { AudioPlayer, AudioPlayerStatus, createAudioPlayer, createAudioResource,
 import { VoiceVoxClient } from "./voicevox";
 import { Readable } from "stream";
 import { once } from 'node:events'
+import { IConfigManager } from "./config";
 
-const SPEAKER_STYLE_ID_DEFAULT = 3
+interface Message {
+    readonly styleId: number
+    readonly message: string
+}
 
 export class Player {
     private readonly client: VoiceVoxClient
 
     private readonly audioPlayer: AudioPlayer
     // TODO: event-driven queue
-    private readonly msgQueue: string[] = []
+    private readonly msgQueue: Message[] = []
     private readonly audioQueue: Promise<ArrayBuffer>[] = []
     private readonly audioQueueSize: number = 5
 
     private running: boolean = false
-    private speakerStyleId: number = SPEAKER_STYLE_ID_DEFAULT
 
     constructor(client: VoiceVoxClient) {
         this.client = client
@@ -27,15 +30,11 @@ export class Player {
         vc.subscribe(this.audioPlayer)
     }
 
-    setSpeakerStyle(speakerStyleId: number) {
-        this.speakerStyleId = speakerStyleId
-    }
-
     skipCurrentMessage() {
         this.audioPlayer.stop()
     }
 
-    queueMessage(msg: string) {
+    queueMessage(msg: Message) {
         this.msgQueue.push(msg)
         this.handleMsgQueue()
     }
@@ -51,7 +50,7 @@ export class Player {
             return
         }
 
-        this.audioQueue.push(this.client.getAudio(msg, this.speakerStyleId))
+        this.audioQueue.push(this.client.getAudio(msg.message, msg.styleId))
         this.handleAudioQueue()
     }
 

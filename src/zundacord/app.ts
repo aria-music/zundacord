@@ -3,14 +3,17 @@ import { ActionRowBuilder, ButtonBuilder, ButtonInteraction, ButtonStyle, Client
 import { getReadableString } from "./utils"
 import { VoiceVoxClient } from "./voicevox"
 import { Player } from "./player"
+import { IConfigManager, JsonConfig } from "./config"
 
 const COLOR_SUCCESS = 0x47ff94
 const COLOR_FAILURE = 0xff4a47
 const COLOR_ACTION = 0x45b5ff
+const DEFAULT_VOICE_STYLE_ID = 3 // ずんだもん ノーマル
 
 export class Zundacord {
     private readonly token: string
 
+    private readonly config: IConfigManager
     private readonly voicevox: VoiceVoxClient
     private readonly client: Client
     private readonly guildPlayers: Map<string, Player> = new Map()
@@ -20,6 +23,7 @@ export class Zundacord {
     constructor(token: string, apiEndpoint: string) {
         this.token = token
 
+        this.config = new JsonConfig()
         this.voicevox = new VoiceVoxClient(apiEndpoint)
         this.client = new Client({
             intents: [
@@ -37,6 +41,8 @@ export class Zundacord {
     }
 
     async start(): Promise<void> {
+        // init config
+        await this.config.init()
         await this.client.login(this.token)
     }
 
@@ -92,6 +98,37 @@ export class Zundacord {
         }
     }
 
+    async onMessageCreate(msg: Message) {
+        // ignore the bot itself
+        if (msg.author.id === this.applicationId) {
+            console.log("ignore the bot itself")
+            return
+        }
+
+        if (!msg.inGuild()) {
+            console.log("cannot handle non-guild messages")
+            return
+        }
+
+        const player = this.guildPlayers.get(msg.guildId)
+        if (!player) {
+            console.log("not in vc, player not found")
+            return
+        }
+
+        console.log(`content: ${msg.content}`)
+        const readableStr = getReadableString(msg.content)
+        console.log(`readbleStr: ${readableStr}`)
+
+        const styleId = await this.config.getMemberVoiceStyleId(msg.guildId, msg.author.id)
+            || DEFAULT_VOICE_STYLE_ID
+
+        player.queueMessage({
+            styleId: styleId,
+            message: readableStr,
+        })
+    }
+
     async slashVoice(interaction: CommandInteraction) {
         console.log("voice")
 
@@ -106,49 +143,6 @@ export class Zundacord {
                 await this.getVoiceSpeakerSelectMenu()
             ]
         })
-    }
-
-    async getVoiceSpeakerSelectMenu(selectedSpeakerUuid?: string): Promise<ActionRowBuilder<SelectMenuBuilder>> {
-        const speakers = await this.voicevox.getSpeakers()
-
-        // TODO: make pager
-        return new ActionRowBuilder<SelectMenuBuilder>()
-            .addComponents(new SelectMenuBuilder()
-                .setCustomId("speakerSelected")
-                .setPlaceholder("Choose the speaker...")
-                .addOptions(
-                    ...speakers.map((s) => {
-                        return {
-                            label: s.name,
-                            description: s.styles.map((st) => {
-                                return st.name
-                            }).join(", "),
-                            value: s.speaker_uuid,
-                            default: s.speaker_uuid === selectedSpeakerUuid
-                        }
-                    })
-                )
-            )
-    }
-
-    async getVoiceSpeakerStyleButtons(speakerUuid: string): Promise<ActionRowBuilder<ButtonBuilder>[]> {
-        const speaker = await this.voicevox.getSpeakerByUUID(speakerUuid)
-        if (!speaker) {
-            throw new Error(`speakerUuid does not exist: ${speakerUuid}`)
-        }
-
-        // TODO: make pager
-        return [
-            new ActionRowBuilder<ButtonBuilder>()
-                .addComponents(
-                    ...speaker.styles.map((st) => {
-                        return new ButtonBuilder()
-                            .setLabel(st.name)
-                            .setCustomId(`speakerStyleSelected/${st.id}`)
-                            .setStyle(ButtonStyle.Primary)
-                    })
-                )
-        ]
     }
 
     async slashJoin(interaction: CommandInteraction<"cached">) {
@@ -263,6 +257,49 @@ export class Zundacord {
         })
     }
 
+    async getVoiceSpeakerSelectMenu(selectedSpeakerUuid?: string): Promise<ActionRowBuilder<SelectMenuBuilder>> {
+        const speakers = await this.voicevox.getSpeakers()
+
+        // TODO: make pager
+        return new ActionRowBuilder<SelectMenuBuilder>()
+            .addComponents(new SelectMenuBuilder()
+                .setCustomId("speakerSelected")
+                .setPlaceholder("Choose the speaker...")
+                .addOptions(
+                    ...speakers.map((s) => {
+                        return {
+                            label: s.name,
+                            description: s.styles.map((st) => {
+                                return st.name
+                            }).join(", "),
+                            value: s.speaker_uuid,
+                            default: s.speaker_uuid === selectedSpeakerUuid
+                        }
+                    })
+                )
+            )
+    }
+
+    async getVoiceSpeakerStyleButtons(speakerUuid: string): Promise<ActionRowBuilder<ButtonBuilder>[]> {
+        const speaker = await this.voicevox.getSpeakerByUUID(speakerUuid)
+        if (!speaker) {
+            throw new Error(`speakerUuid does not exist: ${speakerUuid}`)
+        }
+
+        // TODO: make pager
+        return [
+            new ActionRowBuilder<ButtonBuilder>()
+                .addComponents(
+                    ...speaker.styles.map((st) => {
+                        return new ButtonBuilder()
+                            .setLabel(st.name)
+                            .setCustomId(`speakerStyleSelected/${st.id}`)
+                            .setStyle(ButtonStyle.Primary)
+                    })
+                )
+        ]
+    }
+
     async buttonSpeakerStyleSeleceted(interaction: ButtonInteraction<"cached">) {
         const styleId = interaction.customId.replace(/^speakerStyleSelected\//, "")
 
@@ -293,8 +330,8 @@ export class Zundacord {
             return
         }
 
-        player.setSpeakerStyle(speaker.styleId)
-        interaction.update({
+        this.config.setMemberVoiceStyleId(interaction.guildId, interaction.user.id, speaker.styleId)
+        await interaction.update({
             embeds: [
                 new EmbedBuilder()
                     .setColor(COLOR_SUCCESS)
@@ -326,30 +363,5 @@ export class Zundacord {
         )
 
         console.log("Commands are registered!")
-    }
-
-    async onMessageCreate(msg: Message) {
-        // ignore the bot itself
-        if (msg.author.id === this.applicationId) {
-            console.log("ignore the bot itself")
-            return
-        }
-
-        if (!msg.inGuild()) {
-            console.log("cannot handle non-guild messages")
-            return
-        }
-
-        const player = this.guildPlayers.get(msg.guildId)
-        if (!player) {
-            console.log("not in vc, player not found")
-            return
-        }
-
-        console.log(`content: ${msg.content}`)
-        const readableStr = getReadableString(msg.content)
-        console.log(`readbleStr: ${readableStr}`)
-
-        player.queueMessage(readableStr)
     }
 }
