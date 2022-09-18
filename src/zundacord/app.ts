@@ -120,8 +120,10 @@ export class Zundacord {
         const readableStr = getReadableString(msg.content)
         console.log(`readbleStr: ${readableStr}`)
 
-        const styleId = await this.config.getMemberVoiceStyleId(msg.guildId, msg.author.id)
-            || DEFAULT_VOICE_STYLE_ID
+        let styleId = await this.config.getMemberVoiceStyleId(msg.guildId, msg.author.id)
+        if (styleId === undefined) {
+            styleId = DEFAULT_VOICE_STYLE_ID
+        }
 
         player.queueMessage({
             styleId: styleId,
