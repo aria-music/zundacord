@@ -1,5 +1,5 @@
 import { entersState, getVoiceConnection, joinVoiceChannel, VoiceConnectionStatus } from "@discordjs/voice"
-import { ActionRowBuilder, ButtonBuilder, ButtonInteraction, ButtonStyle, Client, CommandInteraction, EmbedBuilder, GatewayIntentBits, Interaction, Message, Routes, SelectMenuBuilder, SelectMenuInteraction, SlashCommandBuilder } from "discord.js"
+import { ActionRowBuilder, ApplicationCommandType, ButtonBuilder, ButtonInteraction, ButtonStyle, Client, CommandInteraction, ContextMenuCommandBuilder, EmbedBuilder, GatewayIntentBits, Interaction, Message, MessageContextMenuCommandInteraction, Routes, SelectMenuBuilder, SelectMenuInteraction, SlashCommandBuilder } from "discord.js"
 import { getReadableString } from "./utils"
 import { StyledSpeaker, VoiceVoxClient } from "./voicevox"
 import { Player } from "./player"
@@ -74,6 +74,14 @@ export class Zundacord {
                 default:
                     console.log(`unknown slash command: ${interaction.commandName}`)
             }
+        } else if (interaction.isMessageContextMenuCommand()) {
+            switch (interaction.commandName) {
+                case "Read this message":
+                    await this.messageContextReadThisMessage(interaction)
+                    break
+                default:
+                    console.log(`unknown message context menu command: ${interaction.commandName}`)
+            }
         } else if (interaction.isSelectMenu()) {
             const cmd = interaction.customId.split("/", 1)[0]
             switch (cmd) {
@@ -109,16 +117,6 @@ export class Zundacord {
             return
         }
 
-        const player = this.guildPlayers.get(msg.guildId)
-        if (!player) {
-            console.log("not in vc, player not found")
-            return
-        }
-
-        console.log(`content: ${msg.content}`)
-        const readableStr = getReadableString(msg.content)
-        console.log(`readbleStr: ${readableStr}`)
-
         let styleId = await this.config.getMemberVoiceStyleId(msg.guildId, msg.author.id)
         if (styleId === undefined) {
             // user didn't call /voice before,
@@ -126,10 +124,7 @@ export class Zundacord {
             return
         }
 
-        player.queueMessage({
-            styleId: styleId,
-            message: readableStr,
-        })
+        this.queueMessage(msg, styleId)
     }
 
     async slashVoice(interaction: CommandInteraction<"cached">) {
@@ -250,6 +245,33 @@ export class Zundacord {
         interaction.reply({
             ephemeral: true,
             embeds: [embed]
+        })
+    }
+
+    async messageContextReadThisMessage(interaction: MessageContextMenuCommandInteraction<"cached">) {
+        const styleId = await this.config.getMemberVoiceStyleId(interaction.guildId, interaction.user.id)
+        if (styleId === undefined) {
+            interaction.reply({
+                ephemeral: true,
+                embeds: [
+                    new EmbedBuilder()
+                        .setColor(COLOR_FAILURE)
+                        .setTitle("Cannot read")
+                        .setDescription("Set your voice with /voice first")
+                ]
+            })
+            return
+        }
+
+        this.queueMessage(interaction.targetMessage, styleId)
+        interaction.reply({
+            ephemeral: true,
+            embeds: [
+                new EmbedBuilder()
+                    .setColor(COLOR_SUCCESS)
+                    .setTitle("Successfully enqueued!")
+                    .setDescription("The message is successfully enqueued to be read")
+            ]
         })
     }
 
@@ -408,6 +430,7 @@ export class Zundacord {
             new SlashCommandBuilder().setName("voice").setDescription("Set the speaker voice / style"),
             new SlashCommandBuilder().setName("join").setDescription("Join the bot to the voice"),
             new SlashCommandBuilder().setName("skip").setDescription("Skip the message reading now"),
+            new ContextMenuCommandBuilder().setName("Read this message").setType(ApplicationCommandType.Message)
         ].map(c => c.toJSON())
 
         await this.client.rest.put(
@@ -416,5 +439,22 @@ export class Zundacord {
         )
 
         console.log("Commands are registered!")
+    }
+
+    queueMessage(msg: Message<true>, styleId: number) {
+        const player = this.guildPlayers.get(msg.guildId)
+        if (!player) {
+            console.log("not in vc, player not found")
+            return
+        }
+
+        console.log(`content: ${msg.content}`)
+        const readableStr = getReadableString(msg.content)
+        console.log(`readbleStr: ${readableStr}`)
+
+        player.queueMessage({
+            styleId: styleId,
+            message: readableStr,
+        })
     }
 }
