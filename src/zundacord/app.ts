@@ -280,7 +280,7 @@ export class Zundacord {
 
         const currentUserSpeakerStyle = await this.config.getMemberVoiceStyleId(interaction.guildId, interaction.user.id)
         let speaker: StyledSpeaker | undefined
-        if (currentUserSpeakerStyle) {
+        if (currentUserSpeakerStyle !== undefined) {
             speaker = await this.voicevox.getSpeakerById(`${currentUserSpeakerStyle}`)
         }
         const info = await this.voicevox.speakerInfo(speakerUuid)
