@@ -7,6 +7,7 @@ services:
     init: true
     environment:
       ZUNDACORD_DISCORD_TOKEN: ${ZUNDACORD_DISCORD_TOKEN}
+      ZUNDACORD_LOG_LEVEL: ${ZUNDACORD_LOG_LEVEL}
       ZUNDACORD_VOICEVOX_API_ENDPOINT: "http://voicevox:50021"
     volumes:
       - type: bind

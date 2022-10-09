@@ -1,5 +1,8 @@
-import { Guild } from 'discord.js'
 import * as fs from 'node:fs/promises'
+import { logger } from './logger'
+
+const log = logger.child({ "module": "zundacord/config" })
+
 
 interface Config {
     guilds: { [k: string]: GuildConfig }
@@ -29,7 +32,7 @@ export class JsonConfig implements IConfigManager {
         let config = await this.readConfig()
         if (!config) {
             // create default config file
-            console.log(`no ${this.configFile}. Creating one...`)
+            log.info(`no ${this.configFile} found. Creating one...`)
             config = this.defaultConfig()
             this.config = config
             this.writeConfig()
@@ -52,7 +55,7 @@ export class JsonConfig implements IConfigManager {
                 encoding: "utf-8"
             })
         } catch (e) {
-            console.log(`${this.configFile} is missing`)
+            log.error(`no ${this.configFile} found.`)
             return
         }
 

@@ -1,4 +1,8 @@
 import axios from 'axios'
+import { logger } from './logger'
+
+const log = logger.child({ "module": "zundacord/voicevox" })
+
 
 interface AudioQuery {
     _audioQueryBrand: any
@@ -65,8 +69,10 @@ export class VoiceVoxClient {
         // TODO: is_initialized_speaker が true でも initialize_speaker を送ると
         // 毎回初期化が走るっぽい. API のバグなのか仕様なのか不明なので, 調査が必要
         if (!await this.isInitializedSpeaker(styleId)) {
-            console.log("need initialize")
-            this.initializeSpeaker(styleId)
+            log.debug(`[speaker ${styleId}] need initialize`)
+
+            await this.initializeSpeaker(styleId)
+            log.debug(`[speaker ${styleId}] init done`)
         }
     }
 
@@ -145,8 +151,6 @@ export class VoiceVoxClient {
                 speaker: styleId
             }
         })
-
-        console.log("init done")
     }
 
     async isInitializedSpeaker(styleId: string): Promise<boolean> {
@@ -157,7 +161,6 @@ export class VoiceVoxClient {
             }
         })
 
-        console.log(`initialized: ${resp.data}`)
         return resp.data as boolean
     }
 }

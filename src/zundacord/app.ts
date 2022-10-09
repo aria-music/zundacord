@@ -4,10 +4,14 @@ import { getReadableString } from "./utils"
 import { StyledSpeaker, VoiceVoxClient } from "./voicevox"
 import { Player } from "./player"
 import { IConfigManager, JsonConfig } from "./config"
+import { logger } from "./logger"
 
 const COLOR_SUCCESS = 0x47ff94
 const COLOR_FAILURE = 0xff4a47
 const COLOR_ACTION = 0x45b5ff
+
+const log = logger.child({ "module": "zundacord/app" })
+
 
 export class Zundacord {
     private readonly token: string
@@ -43,23 +47,26 @@ export class Zundacord {
         // init config
         await this.config.init()
         await this.client.login(this.token)
+    }
+
+    async onReady() {
+        log.info("Connected to Discord!")
 
         const applicationId = this.client.application?.id
         if (!applicationId) {
             throw new Error("applicationId is missing (BUG)")
         }
         this.applicationId = applicationId
-    }
+        log.debug(`application id is ${applicationId}`)
 
-    async onReady() {
-        console.log("Connected to Discord")
         await this.registerCommands()
-        console.log("Ready!")
+        log.info("Ready!")
     }
 
     async onInteractionCreate(interaction: Interaction) {
         if (!interaction.inCachedGuild()) {
             // do not handle
+            log.debug(`guild not cached: ${interaction.guildId}`)
             return
         }
 
@@ -78,7 +85,7 @@ export class Zundacord {
                     await this.slashSkip(interaction)
                     break
                 default:
-                    console.log(`unknown slash command: ${interaction.commandName}`)
+                    log.debug(`unknown slash command: ${interaction.commandName}`)
             }
         } else if (interaction.isMessageContextMenuCommand()) {
             switch (interaction.commandName) {
@@ -86,7 +93,7 @@ export class Zundacord {
                     await this.messageContextReadThisMessage(interaction)
                     break
                 default:
-                    console.log(`unknown message context menu command: ${interaction.commandName}`)
+                    log.debug(`unknown message context menu command: ${interaction.commandName}`)
             }
         } else if (interaction.isSelectMenu()) {
             const cmd = interaction.customId.split("/", 1)[0]
@@ -95,7 +102,7 @@ export class Zundacord {
                     await this.selectMenuSpeakerSelected(interaction)
                     break
                 default:
-                    console.log(`unknown select menu command: ${interaction.customId}`)
+                    log.debug(`unknown select menu command: ${interaction.customId}`)
             }
         } else if (interaction.isButton()) {
             const cmd = interaction.customId.split("/", 1)[0]
@@ -104,22 +111,22 @@ export class Zundacord {
                     await this.buttonSpeakerStyleSeleceted(interaction)
                     break
                 default:
-                    console.log(`unknown button command: ${interaction.customId}`)
+                    log.debug(`unknown button command: ${interaction.customId}`)
             }
         } else {
-            console.log(`unknown interaction type: ${interaction.type}`)
+            log.debug(`unknown interaction type: ${interaction.type}`)
         }
     }
 
     async onMessageCreate(msg: Message) {
         // ignore the bot itself
         if (msg.author.id === this.applicationId) {
-            console.log("ignore the bot itself")
+            log.debug("ignore the bot itself")
             return
         }
 
         if (!msg.inGuild()) {
-            console.log("cannot handle non-guild messages")
+            log.debug("cannot handle non-guild messages")
             return
         }
 
@@ -134,7 +141,7 @@ export class Zundacord {
     }
 
     async slashVoice(interaction: CommandInteraction<"cached">) {
-        console.log("voice")
+        log.debug("voice")
 
         const playerStyleId = await this.config.getMemberVoiceStyleId(interaction.guildId, interaction.user.id)
         let speaker: StyledSpeaker | undefined
@@ -154,7 +161,7 @@ export class Zundacord {
     }
 
     async slashJoin(interaction: CommandInteraction<"cached">) {
-        console.log("join")
+        log.debug("join")
 
         const embed = (() => {
             // join the voice
@@ -190,16 +197,16 @@ export class Zundacord {
             })
             // register disconnection handler
             vc.on(VoiceConnectionStatus.Disconnected, async (oldState, newState) => {
-                console.log("Disconnected from voice. Waiting...")
+                log.info(`[${interaction.guild.name} (${interaction.guildId})] Disconnected from voice. Waiting...`)
                 try {
                     await Promise.race([
                         entersState(vc, VoiceConnectionStatus.Signalling, 5000),
                         entersState(vc, VoiceConnectionStatus.Connecting, 5000)
                     ])
-                    console.log("Reconnecting starts")
+                    log.info(`[${interaction.guild.name} (${interaction.guildId})] Reconnecting starts`)
                 } catch (e) {
                     // real disconnect (by user)
-                    console.log("Seems disconnected by user. Destroy.")
+                    log.info(`[${interaction.guild.name} (${interaction.guildId})] Seems disconnected by user. Destroy.`)
                     vc.destroy()
                     // remove current audio player
                     this.guildPlayers.delete(interaction.guildId)
@@ -223,7 +230,7 @@ export class Zundacord {
     }
 
     async slashSkip(interaction: CommandInteraction) {
-        console.log("skip")
+        log.debug("skip")
 
         const embed = (() => {
             if (!interaction.inCachedGuild()) {
@@ -411,7 +418,7 @@ export class Zundacord {
     }
 
     async registerCommands() {
-        console.log("Registering commands...")
+        log.info("Registering commands...")
 
         const commands = [
             new SlashCommandBuilder().setName("voice").setDescription("Set the speaker voice / style"),
@@ -425,19 +432,18 @@ export class Zundacord {
             { body: commands }
         )
 
-        console.log("Commands are registered!")
+        log.info("Commands are registered!")
     }
 
     queueMessage(msg: Message<true>, styleId: number) {
         const player = this.guildPlayers.get(msg.guildId)
         if (!player) {
-            console.log("not in vc, player not found")
+            log.debug(`[${msg.guild.name} (${msg.guildId})] bot is not in vc (player not found)`)
             return
         }
 
-        console.log(`content: ${msg.content}`)
         const readableStr = getReadableString(msg.content)
-        console.log(`readbleStr: ${readableStr}`)
+        log.debug(`${msg.content}\n => ${readableStr}`)
 
         player.queueMessage({
             styleId: styleId,
