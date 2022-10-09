@@ -13,6 +13,12 @@ const COLOR_ACTION = 0x45b5ff
 const log = logger.child({ "module": "zundacord/app" })
 
 
+function zundaEmbed(): EmbedBuilder {
+    return new EmbedBuilder()
+        .setFooter({ text: "sarisia/zundacord" })
+}
+
+
 export class Zundacord {
     private readonly token: string
 
@@ -167,7 +173,7 @@ export class Zundacord {
             // join the voice
             // check current voice
             if (getVoiceConnection(interaction.guildId)) {
-                return new EmbedBuilder()
+                return zundaEmbed()
                     .setColor(COLOR_SUCCESS)
                     .setTitle("Already joined!")
                     .setDescription("The bot is already in voice")
@@ -176,7 +182,7 @@ export class Zundacord {
             // true join
             const member = interaction.guild.members.cache.get(interaction.user.id)
             if (!member) {
-                return new EmbedBuilder()
+                return zundaEmbed()
                     .setColor(COLOR_FAILURE)
                     .setTitle("Cannot join")
                     .setDescription("You are not in guild")
@@ -184,7 +190,7 @@ export class Zundacord {
 
             const memberVoiceChannel = member.voice.channel
             if (!memberVoiceChannel) {
-                return new EmbedBuilder()
+                return zundaEmbed()
                     .setColor(COLOR_FAILURE)
                     .setTitle("Cannot join")
                     .setDescription("You need to join to the voice first")
@@ -217,7 +223,7 @@ export class Zundacord {
             player.setStreamTarget(vc)
             this.guildPlayers.set(interaction.guildId, player)
 
-            return new EmbedBuilder()
+            return zundaEmbed()
                 .setColor(COLOR_SUCCESS)
                 .setTitle("Joined!")
                 .setDescription(`Joined to ${memberVoiceChannel.name}`)
@@ -234,7 +240,7 @@ export class Zundacord {
 
         const embed = (() => {
             if (!interaction.inCachedGuild()) {
-                return new EmbedBuilder()
+                return zundaEmbed()
                     .setColor(COLOR_FAILURE)
                     .setTitle("Cannot skip")
                     .setDescription("The bot is not in the guild")
@@ -242,14 +248,14 @@ export class Zundacord {
 
             const player = this.guildPlayers.get(interaction.guildId)
             if (!player) {
-                return new EmbedBuilder()
+                return zundaEmbed()
                     .setColor(COLOR_FAILURE)
                     .setTitle("Cannot skip")
                     .setDescription("The bot is not in voice")
             }
 
             player.skipCurrentMessage()
-            return new EmbedBuilder()
+            return zundaEmbed()
                 .setColor(COLOR_SUCCESS)
                 .setTitle("Skipped!")
                 .setDescription("Skipped the message")
@@ -267,7 +273,7 @@ export class Zundacord {
             interaction.reply({
                 ephemeral: true,
                 embeds: [
-                    new EmbedBuilder()
+                    zundaEmbed()
                         .setColor(COLOR_FAILURE)
                         .setTitle("Cannot read")
                         .setDescription("Set your voice with /voice first")
@@ -280,7 +286,7 @@ export class Zundacord {
         interaction.reply({
             ephemeral: true,
             embeds: [
-                new EmbedBuilder()
+                zundaEmbed()
                     .setColor(COLOR_SUCCESS)
                     .setTitle("Successfully enqueued!")
                     .setDescription("The message is successfully enqueued to be read")
@@ -301,7 +307,7 @@ export class Zundacord {
         interaction.update({
             embeds: [
                 this.embedSelectVoiceHeader(speaker),
-                new EmbedBuilder()
+                zundaEmbed()
                     .setColor(COLOR_ACTION)
                     .setTitle("You need to agree to the terms of service")
                     .setDescription(info.policy)
@@ -363,7 +369,7 @@ export class Zundacord {
         if (!speaker) {
             interaction.update({
                 embeds: [
-                    new EmbedBuilder()
+                    zundaEmbed()
                         .setColor(COLOR_FAILURE)
                         .setTitle("Cannot set voice")
                         .setDescription("Specified speaker / style is not found")
@@ -379,7 +385,7 @@ export class Zundacord {
         this.voicevox.doInitializeSpeaker(`${speaker.styleId}`)
         await interaction.update({
             embeds: [
-                new EmbedBuilder()
+                zundaEmbed()
                     .setColor(COLOR_SUCCESS)
                     .setTitle("Voice is set!")
                     .setFields(
@@ -400,7 +406,7 @@ export class Zundacord {
     }
 
     embedSelectVoiceHeader(speaker?: StyledSpeaker): EmbedBuilder {
-        return new EmbedBuilder()
+        return zundaEmbed()
             .setColor(COLOR_ACTION)
             .setTitle("Select your voice!")
             .setFields(
