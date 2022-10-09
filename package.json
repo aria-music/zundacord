@@ -4,6 +4,7 @@
   "description": "",
   "main": "lib/index.js",
   "scripts": {
+    "start": "node . | pino-pretty",
     "test": "jest",
     "build": "tsc",
     "prod": "npm ci && npm run build && npm prune --production"
@@ -29,6 +30,8 @@
     "@discordjs/voice": "^0.11.0",
     "axios": "^0.27.2",
     "discord.js": "^14.3.0",
+    "pino": "^8.6.1",
+    "pino-pretty": "^9.1.1",
     "sodium": "^3.0.2"
   }
 }
