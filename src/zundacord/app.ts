@@ -43,6 +43,12 @@ export class Zundacord {
         // init config
         await this.config.init()
         await this.client.login(this.token)
+
+        const applicationId = this.client.application?.id
+        if (!applicationId) {
+            throw new Error("applicationId is missing (BUG)")
+        }
+        this.applicationId = applicationId
     }
 
     async onReady() {
@@ -406,12 +412,6 @@ export class Zundacord {
 
     async registerCommands() {
         console.log("Registering commands...")
-
-        const applicationId = this.client.application?.id
-        if (!applicationId) {
-            throw new Error("applicationId is missing (BUG)")
-        }
-        this.applicationId = applicationId
 
         const commands = [
             new SlashCommandBuilder().setName("voice").setDescription("Set the speaker voice / style"),
