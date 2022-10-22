@@ -4,7 +4,7 @@
   "description": "",
   "main": "lib/index.js",
   "scripts": {
-    "start": "node . | pino-pretty --hideObject module",
+    "start": "node . | pino-pretty",
     "test": "jest",
     "build": "tsc",
     "prod": "npm ci && npm run build && npm prune --production"
