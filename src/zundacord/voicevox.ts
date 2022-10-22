@@ -1,4 +1,4 @@
-import axios from 'axios'
+import axios, { AxiosInstance } from 'axios'
 import { logger } from './logger'
 
 const log = logger.child({ "module": "zundacord/voicevox" })
@@ -32,12 +32,21 @@ export interface SpeakerInfo {
 export class VoiceVoxClient {
     private readonly apiEndpoint: string
 
+    private readonly client: AxiosInstance
+
     private cachedSpeakers?: Speaker[]
     private cachedSpeakersUUIDMap?: Map<string, Speaker>
     private cachedSpeakersIdMap?: Map<string, StyledSpeaker>
 
     constructor(apiEndpoint: string) {
         this.apiEndpoint = apiEndpoint
+
+        this.client = axios.create({
+            timeout: 120,
+            headers: {
+                "User-Agent": "sarisia/zundacord"
+            }
+        })
     }
 
     async getAudio(text: string, speakerId: number = 3): Promise<ArrayBuffer> {
@@ -104,14 +113,14 @@ export class VoiceVoxClient {
 
     async speakers(): Promise<Speaker[]> {
         const url = new URL("/speakers", this.apiEndpoint)
-        const resp = await axios.get(url.toString())
+        const resp = await this.client.get(url.toString())
 
         return resp.data as Speaker[]
     }
 
     async audioQuery(text: string, speakerId: number): Promise<AudioQuery> {
         const url = new URL("/audio_query", this.apiEndpoint)
-        const resp = await axios.post(url.toString(), null, {
+        const resp = await this.client.post(url.toString(), null, {
             params: {
                 speaker: speakerId,
                 text: text
@@ -123,7 +132,7 @@ export class VoiceVoxClient {
 
     async synthesis(query: AudioQuery, speakerId: number): Promise<ArrayBuffer> {
         const url = new URL("/synthesis", this.apiEndpoint)
-        const resp = await axios.post(url.toString(), query, {
+        const resp = await this.client.post(url.toString(), query, {
             responseType: "arraybuffer",
             params: {
                 speaker: speakerId
@@ -135,7 +144,7 @@ export class VoiceVoxClient {
 
     async speakerInfo(speakerUuid: string): Promise<SpeakerInfo> {
         const url = new URL("/speaker_info", this.apiEndpoint)
-        const resp = await axios.get(url.toString(), {
+        const resp = await this.client.get(url.toString(), {
             params: {
                 speaker_uuid: speakerUuid
             }
@@ -146,7 +155,7 @@ export class VoiceVoxClient {
 
     async initializeSpeaker(styleId: string): Promise<void> {
         const url = new URL("/initialize_speaker", this.apiEndpoint)
-        await axios.post(url.toString(), undefined, {
+        await this.client.post(url.toString(), undefined, {
             params: {
                 speaker: styleId
             }
@@ -155,7 +164,7 @@ export class VoiceVoxClient {
 
     async isInitializedSpeaker(styleId: string): Promise<boolean> {
         const url = new URL("/is_initialized_speaker", this.apiEndpoint)
-        const resp = await axios.get(url.toString(), {
+        const resp = await this.client.get(url.toString(), {
             params: {
                 speaker: styleId
             }
