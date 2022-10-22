@@ -1,5 +1,5 @@
 import { entersState, getVoiceConnection, joinVoiceChannel, VoiceConnectionStatus } from "@discordjs/voice"
-import { ActionRowBuilder, ApplicationCommandType, ButtonBuilder, ButtonInteraction, ButtonStyle, Client, CommandInteraction, ContextMenuCommandBuilder, EmbedBuilder, GatewayIntentBits, Interaction, Message, MessageContextMenuCommandInteraction, Routes, SelectMenuBuilder, SelectMenuInteraction, SlashCommandBuilder } from "discord.js"
+import { ActionRowBuilder, ApplicationCommandType, ButtonBuilder, ButtonInteraction, ButtonStyle, ChatInputCommandInteraction, Client, CommandInteraction, ContextMenuCommandBuilder, EmbedBuilder, GatewayIntentBits, Interaction, Message, MessageContextMenuCommandInteraction, Routes, SelectMenuBuilder, SelectMenuInteraction, SlashCommandBuilder } from "discord.js"
 import { getReadableString } from "./utils"
 import { StyledSpeaker, VoiceVoxClient } from "./voicevox"
 import { Player } from "./player"
@@ -79,46 +79,19 @@ export class Zundacord {
         if (interaction.isChatInputCommand()) {
             // slash command
             // voice, join, skip
-
-            switch (interaction.commandName) {
-                case "voice":
-                    await this.slashVoice(interaction)
-                    break
-                case "join":
-                    await this.slashJoin(interaction)
-                    break
-                case "skip":
-                    await this.slashSkip(interaction)
-                    break
-                default:
-                    log.debug(`unknown slash command: ${interaction.commandName}`)
-            }
+            await this.handleSlash(interaction)
         } else if (interaction.isMessageContextMenuCommand()) {
-            switch (interaction.commandName) {
-                case "Read this message":
-                    await this.messageContextReadThisMessage(interaction)
-                    break
-                default:
-                    log.debug(`unknown message context menu command: ${interaction.commandName}`)
-            }
+            // context menu command
+            // message context: Read this message
+            await this.handleContextMenu(interaction)
         } else if (interaction.isSelectMenu()) {
-            const cmd = interaction.customId.split("/", 1)[0]
-            switch (cmd) {
-                case "speakerSelected":
-                    await this.selectMenuSpeakerSelected(interaction)
-                    break
-                default:
-                    log.debug(`unknown select menu command: ${interaction.customId}`)
-            }
+            // select menu in command response
+            // speakerSelected
+            await this.handleSelectMenuResponse(interaction)
         } else if (interaction.isButton()) {
-            const cmd = interaction.customId.split("/", 1)[0]
-            switch (cmd) {
-                case "speakerStyleSelected":
-                    await this.buttonSpeakerStyleSeleceted(interaction)
-                    break
-                default:
-                    log.debug(`unknown button command: ${interaction.customId}`)
-            }
+            // button in command response
+            // speakerStyleSelected
+            await this.handleButtonResponse(interaction)
         } else {
             log.debug(`unknown interaction type: ${interaction.type}`)
         }
@@ -147,8 +120,6 @@ export class Zundacord {
     }
 
     async slashVoice(interaction: CommandInteraction<"cached">) {
-        log.debug("voice")
-
         const playerStyleId = await this.config.getMemberVoiceStyleId(interaction.guildId, interaction.user.id)
         let speaker: StyledSpeaker | undefined
         if (playerStyleId !== undefined) {
@@ -158,21 +129,74 @@ export class Zundacord {
         interaction.reply({
             ephemeral: true,
             embeds: [
-                this.embedSelectVoiceHeader(speaker)
+                this.renderEmbedSelectVoiceHeader(speaker)
             ],
             components: [
-                await this.getVoiceSpeakerSelectMenu()
+                await this.renderMenuSelectVoiceSpeaker()
             ]
         })
     }
 
+    async handleSlash(interaction: ChatInputCommandInteraction<"cached">) {
+        const ctx = {
+            guild: interaction.guild.name,
+            guildId: interaction.guildId,
+            user: interaction.member.displayName,
+            userId: interaction.member.id,
+            commandName: interaction.commandName
+        }
+
+        log.debug(ctx, "handling slash command")
+
+        try {
+            switch (interaction.commandName) {
+                case "voice":
+                    await this.slashVoice(interaction)
+                    break
+                case "join":
+                    await this.slashJoin(interaction)
+                    break
+                case "skip":
+                    await this.slashSkip(interaction)
+                    break
+                default:
+                    log.debug(ctx, `unknown slash command: ${interaction.commandName}`)
+                    throw new Error("unknown slash command (this is internal error)")
+            }
+        } catch (e) {
+            log.error(ctx, `unhandled error (${e})`)
+            try {
+                interaction.reply({
+                    ephemeral: true,
+                    embeds: [
+                        zundaEmbed()
+                            .setColor(COLOR_FAILURE)
+                            .setTitle("Internal error")
+                            .setDescription("Try again later")
+                    ]
+                })
+            } catch (e) {
+                log.error(ctx, `failed to send internal error interaction reply (${e})`)
+                // do nothing
+            }
+        }
+
+    }
+
     async slashJoin(interaction: CommandInteraction<"cached">) {
-        log.debug("join")
+        const ctx = {
+            guild: interaction.guild.name,
+            guildId: interaction.guildId,
+            user: interaction.member.displayName,
+            userId: interaction.member.id,
+            commandName: interaction.commandName
+        }
 
         const embed = (() => {
             // join the voice
             // check current voice
             if (getVoiceConnection(interaction.guildId)) {
+                log.debug(ctx, "already joined")
                 return zundaEmbed()
                     .setColor(COLOR_SUCCESS)
                     .setTitle("Already joined!")
@@ -180,8 +204,10 @@ export class Zundacord {
             }
 
             // true join
+            log.debug(ctx, "not joined to voice. Joining...")
             const member = interaction.guild.members.cache.get(interaction.user.id)
             if (!member) {
+                log.debug(ctx, "not in guild?")
                 return zundaEmbed()
                     .setColor(COLOR_FAILURE)
                     .setTitle("Cannot join")
@@ -190,6 +216,7 @@ export class Zundacord {
 
             const memberVoiceChannel = member.voice.channel
             if (!memberVoiceChannel) {
+                log.debug(ctx, "member is not in voice")
                 return zundaEmbed()
                     .setColor(COLOR_FAILURE)
                     .setTitle("Cannot join")
@@ -203,16 +230,16 @@ export class Zundacord {
             })
             // register disconnection handler
             vc.on(VoiceConnectionStatus.Disconnected, async (oldState, newState) => {
-                log.info(`[${interaction.guild.name} (${interaction.guildId})] Disconnected from voice. Waiting...`)
+                log.info(ctx, `Disconnected from voice. Waiting...`)
                 try {
                     await Promise.race([
                         entersState(vc, VoiceConnectionStatus.Signalling, 5000),
                         entersState(vc, VoiceConnectionStatus.Connecting, 5000)
                     ])
-                    log.info(`[${interaction.guild.name} (${interaction.guildId})] Reconnecting starts`)
+                    log.info(ctx, `Reconnecting starts`)
                 } catch (e) {
                     // real disconnect (by user)
-                    log.info(`[${interaction.guild.name} (${interaction.guildId})] Seems disconnected by user. Destroy.`)
+                    log.info(ctx, `Seems disconnected by user. Destroy.`)
                     vc.destroy()
                     // remove current audio player
                     this.guildPlayers.delete(interaction.guildId)
@@ -223,6 +250,7 @@ export class Zundacord {
             player.setStreamTarget(vc)
             this.guildPlayers.set(interaction.guildId, player)
 
+            log.debug(ctx, "joined!")
             return zundaEmbed()
                 .setColor(COLOR_SUCCESS)
                 .setTitle("Joined!")
@@ -235,19 +263,19 @@ export class Zundacord {
         })
     }
 
-    async slashSkip(interaction: CommandInteraction) {
-        log.debug("skip")
+    async slashSkip(interaction: CommandInteraction<"cached">) {
+        const ctx = {
+            guild: interaction.guild.name,
+            guildId: interaction.guildId,
+            user: interaction.member.displayName,
+            userId: interaction.member.id,
+            commandName: interaction.commandName
+        }
 
         const embed = (() => {
-            if (!interaction.inCachedGuild()) {
-                return zundaEmbed()
-                    .setColor(COLOR_FAILURE)
-                    .setTitle("Cannot skip")
-                    .setDescription("The bot is not in the guild")
-            }
-
             const player = this.guildPlayers.get(interaction.guildId)
             if (!player) {
+                log.debug(ctx, "bot is not in voice")
                 return zundaEmbed()
                     .setColor(COLOR_FAILURE)
                     .setTitle("Cannot skip")
@@ -255,6 +283,7 @@ export class Zundacord {
             }
 
             player.skipCurrentMessage()
+            log.debug(ctx, "skipped")
             return zundaEmbed()
                 .setColor(COLOR_SUCCESS)
                 .setTitle("Skipped!")
@@ -267,7 +296,46 @@ export class Zundacord {
         })
     }
 
-    async messageContextReadThisMessage(interaction: MessageContextMenuCommandInteraction<"cached">) {
+    async handleContextMenu(interaction: MessageContextMenuCommandInteraction<"cached">) {
+        const ctx = {
+            guild: interaction.guild.name,
+            guildId: interaction.guildId,
+            user: interaction.member.displayName,
+            userId: interaction.member.id,
+            commandName: interaction.commandName
+        }
+
+        log.debug(ctx, "handling context menu command")
+
+        try {
+            switch (interaction.commandName) {
+                case "Read this message":
+                    await this.contextMenuReadThisMessage(interaction)
+                    break
+                default:
+                    log.debug(ctx, `unknown message context menu command: ${interaction.commandName}`)
+                    throw new Error("unknown message context menu command (this is internal error)")
+            }
+        } catch (e) {
+            log.error(ctx, `unhandled error (${e})`)
+            try {
+                interaction.reply({
+                    ephemeral: true,
+                    embeds: [
+                        zundaEmbed()
+                            .setColor(COLOR_FAILURE)
+                            .setTitle("Internal error")
+                            .setDescription("Try again later")
+                    ]
+                })
+            } catch (e) {
+                log.error(ctx, `failed to send internal error interaction reply (${e})`)
+                // do nothing
+            }
+        }
+    }
+
+    async contextMenuReadThisMessage(interaction: MessageContextMenuCommandInteraction<"cached">) {
         const styleId = await this.config.getMemberVoiceStyleId(interaction.guildId, interaction.user.id)
         if (styleId === undefined) {
             interaction.reply({
@@ -275,8 +343,8 @@ export class Zundacord {
                 embeds: [
                     zundaEmbed()
                         .setColor(COLOR_FAILURE)
-                        .setTitle("Cannot read")
-                        .setDescription("Set your voice with /voice first")
+                        .setTitle("Cannot read the message")
+                        .setDescription("Set your voice with /voice command first!")
                 ]
             })
             return
@@ -294,6 +362,45 @@ export class Zundacord {
         })
     }
 
+    async handleSelectMenuResponse(interaction: SelectMenuInteraction<"cached">) {
+        const ctx = {
+            guild: interaction.guild.name,
+            guildId: interaction.guildId,
+            user: interaction.member.displayName,
+            userId: interaction.member.id,
+            customId: interaction.customId
+        }
+
+        log.debug(ctx, "handling select menu response")
+
+        try {
+            const cmd = interaction.customId.split("/", 1)[0]
+            switch (cmd) {
+                case "speakerSelected":
+                    await this.selectMenuSpeakerSelected(interaction)
+                    break
+                default:
+                    log.debug(ctx, `unknown select menu response customId: ${interaction.customId}`)
+                    throw new Error("unknown select menu response customId (this is internal error)")
+            }
+        } catch (e) {
+            try {
+                interaction.update({
+                    embeds: [
+                        zundaEmbed()
+                            .setColor(COLOR_FAILURE)
+                            .setTitle("Internal error")
+                            .setDescription("Try again later")
+                    ],
+                    components: []
+                })
+            } catch (e) {
+                log.error(ctx, `failed to update internal error interaction (${e})`)
+                // do nothing
+            }
+        }
+    }
+
     async selectMenuSpeakerSelected(interaction: SelectMenuInteraction<"cached">) {
         const speakerUuid = interaction.values[0]
 
@@ -306,20 +413,20 @@ export class Zundacord {
 
         interaction.update({
             embeds: [
-                this.embedSelectVoiceHeader(speaker),
+                this.renderEmbedSelectVoiceHeader(speaker),
                 zundaEmbed()
                     .setColor(COLOR_ACTION)
                     .setTitle("You need to agree to the terms of service")
                     .setDescription(info.policy)
             ],
             components: [
-                await this.getVoiceSpeakerSelectMenu(speakerUuid),
-                ...await this.getVoiceSpeakerStyleButtons(speakerUuid)
+                await this.renderMenuSelectVoiceSpeaker(speakerUuid),
+                ...await this.renderButtonSelectVoiceSpeakerStyle(speakerUuid)
             ]
         })
     }
 
-    async getVoiceSpeakerSelectMenu(selectedSpeakerUuid?: string): Promise<ActionRowBuilder<SelectMenuBuilder>> {
+    async renderMenuSelectVoiceSpeaker(selectedSpeakerUuid?: string): Promise<ActionRowBuilder<SelectMenuBuilder>> {
         const speakers = await this.voicevox.getSpeakers()
 
         // TODO: make pager
@@ -342,7 +449,7 @@ export class Zundacord {
             )
     }
 
-    async getVoiceSpeakerStyleButtons(speakerUuid: string): Promise<ActionRowBuilder<ButtonBuilder>[]> {
+    async renderButtonSelectVoiceSpeakerStyle(speakerUuid: string): Promise<ActionRowBuilder<ButtonBuilder>[]> {
         const speaker = await this.voicevox.getSpeakerByUUID(speakerUuid)
         if (!speaker) {
             throw new Error(`speakerUuid does not exist: ${speakerUuid}`)
@@ -360,6 +467,44 @@ export class Zundacord {
                     })
                 )
         ]
+    }
+
+    async handleButtonResponse(interaction: ButtonInteraction<"cached">) {
+        const ctx = {
+            guild: interaction.guild.name,
+            guildId: interaction.guildId,
+            user: interaction.member.displayName,
+            userId: interaction.member.id,
+            customId: interaction.customId
+        }
+
+        log.debug(ctx, "handling button response")
+
+        try {
+            const cmd = interaction.customId.split("/", 1)[0]
+            switch (cmd) {
+                case "speakerStyleSelected":
+                    await this.buttonSpeakerStyleSeleceted(interaction)
+                    break
+                default:
+                    log.debug(ctx, `unknown button response customId: ${interaction.customId}`)
+                    throw new Error("unknown button response customId (this is internal error)")
+            }
+        } catch (e) {
+            try {
+                interaction.update({
+                    embeds: [
+                        zundaEmbed()
+                            .setColor(COLOR_FAILURE)
+                            .setTitle("Internal error")
+                            .setDescription("Try again later")
+                    ],
+                    components: []
+                })
+            } catch (e) {
+                log.error(ctx, `failed to update internal error interaction (${e})`)
+            }
+        }
     }
 
     async buttonSpeakerStyleSeleceted(interaction: ButtonInteraction<"cached">) {
@@ -405,7 +550,7 @@ export class Zundacord {
         })
     }
 
-    embedSelectVoiceHeader(speaker?: StyledSpeaker): EmbedBuilder {
+    renderEmbedSelectVoiceHeader(speaker?: StyledSpeaker): EmbedBuilder {
         return zundaEmbed()
             .setColor(COLOR_ACTION)
             .setTitle("Select your voice!")

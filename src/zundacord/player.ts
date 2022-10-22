@@ -2,18 +2,21 @@ import { AudioPlayer, AudioPlayerStatus, createAudioPlayer, createAudioResource,
 import { VoiceVoxClient } from "./voicevox";
 import { Readable } from "stream";
 import { once } from 'node:events'
-import { IConfigManager } from "./config";
+import { logger } from "./logger"
+
 
 interface Message {
     readonly styleId: number
     readonly message: string
 }
 
+const log = logger.child({ "module": "zundacord/player" })
+
+
 export class Player {
     private readonly client: VoiceVoxClient
-
     private readonly audioPlayer: AudioPlayer
-    // TODO: event-driven queue
+
     private readonly msgQueue: Message[] = []
     private readonly audioQueue: Promise<ArrayBuffer>[] = []
     private readonly audioQueueSize: number = 5
@@ -73,6 +76,14 @@ export class Player {
             this.audioPlayer.play(createAudioResource(Readable.from(Buffer.from(audio))))
             // wait until playback finish
             await once(this.audioPlayer, AudioPlayerStatus.Idle)
+        } catch (e) {
+            const ctx = {
+                ctxtest: "yeah"
+            }
+            log.error({
+                ...ctx,
+                err: e
+            }, `error while handling audio queue: ${e}`)
         } finally {
             this.running = false
         }
