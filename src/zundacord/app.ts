@@ -1,5 +1,5 @@
 import { entersState, getVoiceConnection, joinVoiceChannel, VoiceConnectionStatus } from "@discordjs/voice"
-import { ActionRowBuilder, ActivityType, ApplicationCommandType, ButtonBuilder, ButtonInteraction, ButtonStyle, ChatInputCommandInteraction, Client, CommandInteraction, ContextMenuCommandBuilder, EmbedBuilder, GatewayIntentBits, Interaction, Message, MessageContextMenuCommandInteraction, Routes, SelectMenuBuilder, SelectMenuInteraction, SlashCommandBuilder } from "discord.js"
+import { ActionRowBuilder, ActivityType, ApplicationCommandType, ButtonBuilder, ButtonInteraction, ButtonStyle, ChatInputCommandInteraction, Client, CommandInteraction, ContextMenuCommandBuilder, EmbedBuilder, GatewayIntentBits, Interaction, Message, MessageContextMenuCommandInteraction, Routes, SelectMenuBuilder, SelectMenuInteraction, SlashCommandBuilder, SlashCommandUserOption } from "discord.js"
 import { getReadableString } from "./utils"
 import { StyledSpeaker, VoiceVoxClient } from "./voicevox"
 import { Player } from "./player"
@@ -125,7 +125,15 @@ export class Zundacord {
     }
 
     async slashVoice(interaction: CommandInteraction<"cached">) {
-        const playerStyleId = await this.config.getMemberVoiceStyleId(interaction.guildId, interaction.user.id)
+        let userId = interaction.user.id
+
+        const inspectUser = interaction.options.getUser("inspect-user")
+        log.debug(`inspectUser: ${inspectUser}`)
+        if (inspectUser) {
+            userId = inspectUser.id
+        }
+
+        const playerStyleId = await this.config.getMemberVoiceStyleId(interaction.guildId, userId)
         let speaker: StyledSpeaker | undefined
         if (playerStyleId !== undefined) {
             speaker = await this.voicevox.getSpeakerById(`${playerStyleId}`)
@@ -136,9 +144,9 @@ export class Zundacord {
             embeds: [
                 this.renderEmbedSelectVoiceHeader(speaker)
             ],
-            components: [
+            components: !inspectUser ? [
                 await this.renderMenuSelectVoiceSpeaker()
-            ]
+            ] : undefined
         })
     }
 
@@ -588,7 +596,12 @@ export class Zundacord {
         log.info("Registering commands...")
 
         const commands = [
-            new SlashCommandBuilder().setName("voice").setDescription("Set the speaker voice / style"),
+            new SlashCommandBuilder().setName("voice").setDescription("Set the speaker voice / style")
+                .addUserOption(
+                    new SlashCommandUserOption()
+                        .setName("inspect-user")
+                        .setDescription("specify username to get user's configurations")
+                ),
             new SlashCommandBuilder().setName("join").setDescription("Join the bot to the voice"),
             new SlashCommandBuilder().setName("skip").setDescription("Skip the message reading now"),
             new ContextMenuCommandBuilder().setName("Read this message").setType(ApplicationCommandType.Message)
