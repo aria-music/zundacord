@@ -1,5 +1,5 @@
 import { entersState, getVoiceConnection, joinVoiceChannel, VoiceConnectionStatus } from "@discordjs/voice"
-import { ActionRowBuilder, ApplicationCommandType, ButtonBuilder, ButtonInteraction, ButtonStyle, ChatInputCommandInteraction, Client, CommandInteraction, ContextMenuCommandBuilder, EmbedBuilder, GatewayIntentBits, Interaction, Message, MessageContextMenuCommandInteraction, Routes, SelectMenuBuilder, SelectMenuInteraction, SlashCommandBuilder } from "discord.js"
+import { ActionRowBuilder, ActivityType, ApplicationCommandType, ButtonBuilder, ButtonInteraction, ButtonStyle, ChatInputCommandInteraction, Client, CommandInteraction, ContextMenuCommandBuilder, EmbedBuilder, GatewayIntentBits, Interaction, Message, MessageContextMenuCommandInteraction, Routes, SelectMenuBuilder, SelectMenuInteraction, SlashCommandBuilder } from "discord.js"
 import { getReadableString } from "./utils"
 import { StyledSpeaker, VoiceVoxClient } from "./voicevox"
 import { Player } from "./player"
@@ -66,6 +66,11 @@ export class Zundacord {
         log.debug(`application id is ${applicationId}`)
 
         await this.registerCommands()
+
+        this.client.user?.setActivity({
+            type: ActivityType.Watching,
+            name: "you! Type /voice to start TTS",
+        })
         log.info("Ready!")
     }
 
