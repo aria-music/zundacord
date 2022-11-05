@@ -3,6 +3,7 @@ import { logger } from './logger'
 
 const log = logger.child({ "module": "zundacord/voicevox" })
 
+const SPEAKERS_CACHE_TTL_MILLISECONDS = 300 * 1000
 
 interface AudioQuery {
     _audioQueryBrand: any
@@ -28,25 +29,39 @@ export interface SpeakerInfo {
     readonly policy: string
 }
 
+interface SpeakersCache {
+    updateOngoing: boolean
+    updatedAt: number
+    speakers: Speaker[]
+    speakersUuidMap: Map<string, Speaker>
+    speakersIdMap: Map<string, StyledSpeaker>
+}
+
 
 export class VoiceVoxClient {
     private readonly apiEndpoint: string
 
     private readonly client: AxiosInstance
 
-    private cachedSpeakers?: Speaker[]
-    private cachedSpeakersUUIDMap?: Map<string, Speaker>
-    private cachedSpeakersIdMap?: Map<string, StyledSpeaker>
+    private speakersCache: SpeakersCache
 
     constructor(apiEndpoint: string) {
         this.apiEndpoint = apiEndpoint
 
         this.client = axios.create({
-            timeout: 120,
+            timeout: 120000,
             headers: {
                 "User-Agent": "sarisia/zundacord"
             }
         })
+
+        this.speakersCache = {
+            updateOngoing: false,
+            updatedAt: 0,
+            speakers: [],
+            speakersUuidMap: new Map(),
+            speakersIdMap: new Map()
+        }
     }
 
     async getAudio(text: string, speakerId: number = 3): Promise<ArrayBuffer> {
@@ -56,22 +71,34 @@ export class VoiceVoxClient {
     }
 
     async updateCachedSpeakers() {
-        this.cachedSpeakers = await this.speakers()
+        const now = Date.now()
+        if (!this.speakersCache.updateOngoing && (now - this.speakersCache.updatedAt) < SPEAKERS_CACHE_TTL_MILLISECONDS) {
+            return
+        }
+
+        log.debug("cachedSpeakers TTL exceeded. Updating...")
+        this.speakersCache.updateOngoing = true
+
+        this.speakersCache.speakers = await this.speakers()
 
         // map them
-        this.cachedSpeakersUUIDMap = new Map()
-        this.cachedSpeakersIdMap = new Map()
+        this.speakersCache.speakersUuidMap = new Map()
+        this.speakersCache.speakersIdMap = new Map()
 
-        this.cachedSpeakers.map((s) => {
-            this.cachedSpeakersUUIDMap?.set(s.speaker_uuid, s)
+        this.speakersCache.speakers.map((s) => {
+            this.speakersCache.speakersUuidMap?.set(s.speaker_uuid, s)
             s.styles.map((st) => {
-                this.cachedSpeakersIdMap?.set(`${st.id}`, {
+                this.speakersCache.speakersIdMap?.set(`${st.id}`, {
                     styleId: st.id,
                     styleName: st.name,
                     speaker: s
                 })
             })
         })
+
+        this.speakersCache.updatedAt = now
+        this.speakersCache.updateOngoing = false
+        log.debug("cachedSpeakers updated!")
     }
 
     async doInitializeSpeaker(styleId: string) {
@@ -86,29 +113,18 @@ export class VoiceVoxClient {
     }
 
     async getSpeakers(): Promise<Speaker[]> {
-        if (!this.cachedSpeakers) {
-            await this.updateCachedSpeakers()
-        }
-
-        // TODO: better typing
-        // @ts-ignore
-        return this.cachedSpeakers
+        await this.updateCachedSpeakers()
+        return this.speakersCache.speakers
     }
 
     async getSpeakerByUUID(uuid: string): Promise<Speaker | undefined> {
-        if (!this.cachedSpeakersUUIDMap) {
-            await this.updateCachedSpeakers()
-        }
-
-        return this.cachedSpeakersUUIDMap?.get(uuid)
+        await this.updateCachedSpeakers()
+        return this.speakersCache.speakersUuidMap.get(uuid)
     }
 
     async getSpeakerById(id: string): Promise<StyledSpeaker | undefined> {
-        if (!this.cachedSpeakersIdMap) {
-            await this.updateCachedSpeakers()
-        }
-
-        return this.cachedSpeakersIdMap?.get(id)
+        await this.updateCachedSpeakers()
+        return this.speakersCache.speakersIdMap.get(id)
     }
 
     async speakers(): Promise<Speaker[]> {

@@ -164,7 +164,7 @@ export class Zundacord {
                     throw new Error("unknown slash command (this is internal error)")
             }
         } catch (e) {
-            log.error(ctx, `unhandled error (${e})`)
+            log.error({ ...ctx, err: e }, `unhandled error`)
             try {
                 interaction.reply({
                     ephemeral: true,
@@ -230,16 +230,23 @@ export class Zundacord {
             })
             // register disconnection handler
             vc.on(VoiceConnectionStatus.Disconnected, async (oldState, newState) => {
-                log.info(ctx, `Disconnected from voice. Waiting...`)
+                const vcCtx = {
+                    guild: interaction.guild.name,
+                    guildId: interaction.guildId,
+                    oldState: oldState,
+                    newState: newState
+                }
+                log.info(vcCtx, `Disconnected from voice. Waiting...`)
+
                 try {
                     await Promise.race([
                         entersState(vc, VoiceConnectionStatus.Signalling, 5000),
                         entersState(vc, VoiceConnectionStatus.Connecting, 5000)
                     ])
-                    log.info(ctx, `Reconnecting starts`)
+                    log.info(vcCtx, `Reconnecting starts`)
                 } catch (e) {
                     // real disconnect (by user)
-                    log.info(ctx, `Seems disconnected by user. Destroy.`)
+                    log.info(vcCtx, `Seems disconnected by user. Destroy.`)
                     vc.destroy()
                     // remove current audio player
                     this.guildPlayers.delete(interaction.guildId)
@@ -317,7 +324,7 @@ export class Zundacord {
                     throw new Error("unknown message context menu command (this is internal error)")
             }
         } catch (e) {
-            log.error(ctx, `unhandled error (${e})`)
+            log.error({ ...ctx, err: e }, `unhandled error`)
             try {
                 interaction.reply({
                     ephemeral: true,
@@ -428,6 +435,10 @@ export class Zundacord {
 
     async renderMenuSelectVoiceSpeaker(selectedSpeakerUuid?: string): Promise<ActionRowBuilder<SelectMenuBuilder>> {
         const speakers = await this.voicevox.getSpeakers()
+
+        if (!speakers.length) {
+            throw new Error("no voice provided from engine?")
+        }
 
         // TODO: make pager
         return new ActionRowBuilder<SelectMenuBuilder>()
@@ -587,14 +598,23 @@ export class Zundacord {
     }
 
     queueMessage(msg: Message<true>, styleId: number) {
+        const ctx = {
+            guild: msg.guild.name,
+            guildId: msg.guildId,
+            user: msg.member?.displayName,
+            userId: msg.member?.id,
+            rawMessage: msg.content,
+            styleId: styleId
+        }
+
         const player = this.guildPlayers.get(msg.guildId)
         if (!player) {
-            log.debug(`[${msg.guild.name} (${msg.guildId})] bot is not in vc (player not found)`)
+            log.debug(ctx, `bot is not in vc (player not found)`)
             return
         }
 
         const readableStr = getReadableString(msg.content)
-        log.debug(`${msg.content}\n => ${readableStr}`)
+        log.debug(ctx, `readableStr = ${readableStr}`)
 
         player.queueMessage({
             styleId: styleId,

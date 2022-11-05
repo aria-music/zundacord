@@ -77,13 +77,7 @@ export class Player {
             // wait until playback finish
             await once(this.audioPlayer, AudioPlayerStatus.Idle)
         } catch (e) {
-            const ctx = {
-                ctxtest: "yeah"
-            }
-            log.error({
-                ...ctx,
-                err: e
-            }, `error while handling audio queue: ${e}`)
+            log.error(e, `error while handling audio queue: ${e}`)
         } finally {
             this.running = false
         }
