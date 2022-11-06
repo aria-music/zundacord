@@ -125,15 +125,15 @@ export class Zundacord {
     }
 
     async slashVoice(interaction: CommandInteraction<"cached">) {
-        let userId = interaction.user.id
+        let user = interaction.user
 
         const inspectUser = interaction.options.getUser("inspect-user")
         log.debug(`inspectUser: ${inspectUser}`)
         if (inspectUser) {
-            userId = inspectUser.id
+            user = inspectUser
         }
 
-        const playerStyleId = await this.config.getMemberVoiceStyleId(interaction.guildId, userId)
+        const playerStyleId = await this.config.getMemberVoiceStyleId(interaction.guildId, user.id)
         let speaker: StyledSpeaker | undefined
         if (playerStyleId !== undefined) {
             speaker = await this.voicevox.getSpeakerById(`${playerStyleId}`)
@@ -142,7 +142,7 @@ export class Zundacord {
         interaction.reply({
             ephemeral: true,
             embeds: [
-                this.renderEmbedSelectVoiceHeader(speaker)
+                this.renderEmbedUserConfigurations(speaker, inspectUser ? `@${user.username}'s Configuration` : undefined)
             ],
             components: !inspectUser ? [
                 await this.renderMenuSelectVoiceSpeaker()
@@ -433,7 +433,7 @@ export class Zundacord {
 
         interaction.update({
             embeds: [
-                this.renderEmbedSelectVoiceHeader(speaker),
+                this.renderEmbedUserConfigurations(speaker),
                 zundaEmbed()
                     .setColor(COLOR_ACTION)
                     .setTitle("You need to agree to the terms of service")
@@ -574,10 +574,10 @@ export class Zundacord {
         })
     }
 
-    renderEmbedSelectVoiceHeader(speaker?: StyledSpeaker): EmbedBuilder {
+    renderEmbedUserConfigurations(speaker?: StyledSpeaker, title?: string): EmbedBuilder {
         return zundaEmbed()
             .setColor(COLOR_ACTION)
-            .setTitle("Select your voice!")
+            .setTitle(title || "Select your voice!")
             .setFields(
                 {
                     "name": "Speaker",
