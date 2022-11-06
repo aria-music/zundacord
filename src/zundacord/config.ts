@@ -5,21 +5,22 @@ const log = logger.child({ "module": "zundacord/config" })
 
 
 interface Config {
-    guilds: { [k: string]: GuildConfig }
+    guilds: { [k: string]: GuildConfig | undefined }
 }
 
 interface GuildConfig {
-    members: { [k: string]: MemberConfig }
+    members: { [k: string]: MemberConfig | undefined }
 }
 
-interface MemberConfig {
-    voiceStyleId: number
+export interface MemberConfig {
+    ttsEnabled: boolean
+    voiceStyleId?: number
 }
 
 export interface IConfigManager {
     init(): Promise<IConfigManager>
-    getMemberVoiceStyleId(guildId: string, userId: string): Promise<number | undefined>
-    setMemberVoiceStyleId(guildId: string, userId: string, styleId: number): Promise<void>
+    getMemberConfig(guildId: string, userId: string): Promise<MemberConfig>
+    setMemberConfig(guildId: string, userId: string, config: MemberConfig): Promise<void>
 }
 
 export class JsonConfig implements IConfigManager {
@@ -69,20 +70,24 @@ export class JsonConfig implements IConfigManager {
         await fs.writeFile(this.configFile, JSON.stringify(this.config, undefined, 4))
     }
 
-    async getMemberVoiceStyleId(guildId: string, userId: string): Promise<number | undefined> {
-        return this.config.guilds[guildId]?.members[userId]?.voiceStyleId
+    async getMemberConfig(guildId: string, userId: string): Promise<MemberConfig> {
+        const rawConfig = this.config.guilds[guildId]?.members[userId]
+        // populate default value
+        return {
+            ttsEnabled: true,
+            ...rawConfig
+        }
     }
 
-    async setMemberVoiceStyleId(guildId: string, userId: string, styleId: number): Promise<void> {
-        if (!this.config.guilds[guildId]) {
+    async setMemberConfig(guildId: string, userId: string, config: MemberConfig): Promise<void> {
+        if (this.config.guilds[guildId] === undefined) {
             this.config.guilds[guildId] = {
                 members: {}
             }
         }
 
-        this.config.guilds[guildId].members[userId] = {
-            voiceStyleId: styleId
-        }
+        // @ts-ignore
+        this.config.guilds[guildId].members[userId] = config
         this.writeConfig()
     }
 }

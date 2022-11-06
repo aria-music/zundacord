@@ -3,7 +3,7 @@ import { ActionRowBuilder, ActivityType, ApplicationCommandType, ButtonBuilder, 
 import { getReadableString } from "./utils"
 import { StyledSpeaker, VoiceVoxClient } from "./voicevox"
 import { Player } from "./player"
-import { IConfigManager, JsonConfig } from "./config"
+import { IConfigManager, JsonConfig, MemberConfig } from "./config"
 import { logger } from "./logger"
 
 const COLOR_SUCCESS = 0x47ff94
@@ -114,14 +114,19 @@ export class Zundacord {
             return
         }
 
-        let styleId = await this.config.getMemberVoiceStyleId(msg.guildId, msg.author.id)
-        if (styleId === undefined) {
+        const memberConfig = await this.config.getMemberConfig(msg.guildId, msg.author.id)
+
+        if (!memberConfig.ttsEnabled) {
+            return
+        }
+
+        if (memberConfig?.voiceStyleId === undefined) {
             // user didn't call /voice before,
             // means they haven't agreed to tos yet
             return
         }
 
-        this.queueMessage(msg, styleId)
+        this.queueMessage(msg, memberConfig?.voiceStyleId)
     }
 
     async slashVoice(interaction: CommandInteraction<"cached">) {
@@ -133,18 +138,19 @@ export class Zundacord {
             user = inspectUser
         }
 
-        const playerStyleId = await this.config.getMemberVoiceStyleId(interaction.guildId, user.id)
+        const memberConfig = await this.config.getMemberConfig(interaction.guildId, user.id)
         let speaker: StyledSpeaker | undefined
-        if (playerStyleId !== undefined) {
-            speaker = await this.voicevox.getSpeakerById(`${playerStyleId}`)
+        if (memberConfig?.voiceStyleId !== undefined) {
+            speaker = await this.voicevox.getSpeakerById(`${memberConfig.voiceStyleId}`)
         }
 
         interaction.reply({
             ephemeral: true,
             embeds: [
-                this.renderEmbedUserConfigurations(speaker, inspectUser ? `@${user.username}'s Configuration` : undefined)
+                this.renderEmbedUserConfigurations(speaker, inspectUser ? `@${user.username}'s Configuration` : undefined, memberConfig.ttsEnabled)
             ],
             components: !inspectUser ? [
+                this.renderButtonSelectTtsEnabled(memberConfig.ttsEnabled),
                 await this.renderMenuSelectVoiceSpeaker()
             ] : undefined
         })
@@ -356,8 +362,22 @@ export class Zundacord {
     }
 
     async contextMenuReadThisMessage(interaction: MessageContextMenuCommandInteraction<"cached">) {
-        const styleId = await this.config.getMemberVoiceStyleId(interaction.guildId, interaction.user.id)
-        if (styleId === undefined) {
+        const memberConfig = await this.config.getMemberConfig(interaction.guildId, interaction.user.id)
+
+        if (!memberConfig.ttsEnabled) {
+            interaction.reply({
+                ephemeral: true,
+                embeds: [
+                    zundaEmbed()
+                        .setColor(COLOR_FAILURE)
+                        .setTitle("Cannot read the message")
+                        .setDescription("Enable TTS with /voice command first!")
+                ]
+            })
+            return
+        }
+
+        if (memberConfig?.voiceStyleId === undefined) {
             interaction.reply({
                 ephemeral: true,
                 embeds: [
@@ -370,7 +390,7 @@ export class Zundacord {
             return
         }
 
-        this.queueMessage(interaction.targetMessage, styleId)
+        this.queueMessage(interaction.targetMessage, memberConfig.voiceStyleId)
         interaction.reply({
             ephemeral: true,
             embeds: [
@@ -424,22 +444,23 @@ export class Zundacord {
     async selectMenuSpeakerSelected(interaction: SelectMenuInteraction<"cached">) {
         const speakerUuid = interaction.values[0]
 
-        const currentUserSpeakerStyle = await this.config.getMemberVoiceStyleId(interaction.guildId, interaction.user.id)
+        const currentMemberConfig = await this.config.getMemberConfig(interaction.guildId, interaction.user.id)
         let speaker: StyledSpeaker | undefined
-        if (currentUserSpeakerStyle !== undefined) {
-            speaker = await this.voicevox.getSpeakerById(`${currentUserSpeakerStyle}`)
+        if (currentMemberConfig?.voiceStyleId !== undefined) {
+            speaker = await this.voicevox.getSpeakerById(`${currentMemberConfig.voiceStyleId}`)
         }
         const info = await this.voicevox.speakerInfo(speakerUuid)
 
         interaction.update({
             embeds: [
-                this.renderEmbedUserConfigurations(speaker),
+                this.renderEmbedUserConfigurations(speaker, undefined, currentMemberConfig.ttsEnabled),
                 zundaEmbed()
                     .setColor(COLOR_ACTION)
                     .setTitle("You need to agree to the terms of service")
                     .setDescription(info.policy)
             ],
             components: [
+                this.renderButtonSelectTtsEnabled(currentMemberConfig.ttsEnabled),
                 await this.renderMenuSelectVoiceSpeaker(speakerUuid),
                 ...await this.renderButtonSelectVoiceSpeakerStyle(speakerUuid)
             ]
@@ -493,6 +514,22 @@ export class Zundacord {
         ]
     }
 
+    renderButtonSelectTtsEnabled(currentTtsEnabled: boolean): ActionRowBuilder<ButtonBuilder> {
+        return new ActionRowBuilder<ButtonBuilder>()
+            .addComponents(
+                new ButtonBuilder()
+                    .setLabel("TTS: Enable")
+                    .setCustomId("ttsEnabledSelected/enable")
+                    .setStyle(ButtonStyle.Success)
+                    .setDisabled(currentTtsEnabled),
+                new ButtonBuilder()
+                    .setLabel("TTS: Disable")
+                    .setCustomId("ttsEnabledSelected/disable")
+                    .setStyle(ButtonStyle.Danger)
+                    .setDisabled(!currentTtsEnabled)
+            )
+    }
+
     async handleButtonResponse(interaction: ButtonInteraction<"cached">) {
         const ctx = {
             guild: interaction.guild.name,
@@ -509,6 +546,9 @@ export class Zundacord {
             switch (cmd) {
                 case "speakerStyleSelected":
                     await this.buttonSpeakerStyleSeleceted(interaction)
+                    break
+                case "ttsEnabledSelected":
+                    await this.buttonTtsEnabledSelected(interaction)
                     break
                 default:
                     log.debug(ctx, `unknown button response customId: ${interaction.customId}`)
@@ -548,7 +588,9 @@ export class Zundacord {
             return
         }
 
-        this.config.setMemberVoiceStyleId(interaction.guildId, interaction.user.id, speaker.styleId)
+        const memberConfig = (await this.config.getMemberConfig(interaction.guildId, interaction.member.id))
+        memberConfig.voiceStyleId = speaker.styleId
+        this.config.setMemberConfig(interaction.guildId, interaction.user.id, memberConfig)
         // TODO: this is useless at this moment due to VOICEVOX engine's limitation
         // see #3
         this.voicevox.doInitializeSpeaker(`${speaker.styleId}`)
@@ -574,11 +616,34 @@ export class Zundacord {
         })
     }
 
-    renderEmbedUserConfigurations(speaker?: StyledSpeaker, title?: string): EmbedBuilder {
+    async buttonTtsEnabledSelected(interaction: ButtonInteraction<"cached">) {
+        const enabled = interaction.customId.replace(/^ttsEnabledSelected\//, "") === "enable"
+
+        const memberConfig = (await this.config.getMemberConfig(interaction.guildId, interaction.member.id))
+        memberConfig.ttsEnabled = enabled
+        this.config.setMemberConfig(interaction.guildId, interaction.user.id, memberConfig)
+
+        await interaction.update({
+            embeds: [
+                zundaEmbed()
+                    .setColor(COLOR_SUCCESS)
+                    .setTitle(`TTS ${enabled ? "Enabled" : "Disabled"}!`)
+                    .setDescription(`TTS is now ${enabled ? "enabled" : "disabled"}`)
+            ],
+            components: []
+        })
+    }
+
+    renderEmbedUserConfigurations(speaker?: StyledSpeaker, title?: string, ttsEnabled?: boolean): EmbedBuilder {
         return zundaEmbed()
             .setColor(COLOR_ACTION)
             .setTitle(title || "Select your voice!")
             .setFields(
+                {
+                    "name": "TTS Enabled",
+                    "value": ttsEnabled ? ":arrow_forward: Enabled" : ":pause_button: Disabled",
+                    "inline": false
+                },
                 {
                     "name": "Speaker",
                     "value": speaker?.speaker.name || "(Not set)",
