@@ -4,6 +4,8 @@ services:
   zundacord:
     build:
       target: app
+      args:
+        USER_UID: "1001"
     init: true
     environment:
       ZUNDACORD_DISCORD_TOKEN: ${ZUNDACORD_DISCORD_TOKEN}

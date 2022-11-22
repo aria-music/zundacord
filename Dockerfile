@@ -18,10 +18,17 @@ WORKDIR /workspaces/zundacord
 # make ready
 RUN su node -c "npm run prod"
 
+# update uid, gid to local user
+ARG USER_UID=1000
+ARG USER_GID=$USER_UID
+
+RUN groupmod --gid $USER_GID node \
+    && usermod --uid $USER_UID --gid $USER_GID node \
+    && chown -R $USER_UID:$USER_GID /home/node
+
 USER node
 ENTRYPOINT []
-CMD [ "node", "." ]
-
+CMD [ "npm", "start" ]
 
 # ===== DEVELOP =====
 
