@@ -2,6 +2,8 @@
 
 Discord TTS Bot, powered by [VOICEVOX](https://voicevox.hiroshiba.jp/)
 
+![image](https://user-images.githubusercontent.com/33576079/224512072-a5485639-ef5c-4db2-a093-dd7b23d6ea04.png)
+
 # Alpha Version Warning!
 
 This application is still in early development stage and considered unstable.
