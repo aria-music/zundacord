@@ -698,7 +698,10 @@ export class Zundacord {
 
         const readableStr = getReadableString(msg.cleanContent)
         log.debug(ctx, `readableStr = ${readableStr}`)
-
+        if (!readableStr) {
+            log.debug(ctx, `Skip reading as it is empty text`)
+            return
+        }
         player.queueMessage({
             styleId: styleId,
             message: readableStr,
