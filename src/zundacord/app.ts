@@ -696,7 +696,7 @@ export class Zundacord {
             return
         }
 
-        const readableStr = getReadableString(msg.content)
+        const readableStr = getReadableString(msg.cleanContent)
         log.debug(ctx, `readableStr = ${readableStr}`)
 
         player.queueMessage({
