@@ -45,5 +45,7 @@
 				"dbaeumer.vscode-eslint"
 			]
 		}
-	}
+	},
+
+	"updateContentCommand": "npm ci"
 }
