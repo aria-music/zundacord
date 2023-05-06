@@ -1,0 +1,15 @@
+name: update devcontainer image
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - Dockerfile
+      - docker-compose*.yml
+      - .devcontainer/**/*
+
+jobs:
+  build:
+    uses: sarisia/workflows/.github/workflows/update-devcontainer.yml@55280dcb719a5d5e16a4f555bc03467b2f0bdb05
+    permissions:
+      contents: read
+      packages: write
