@@ -1,4 +1,4 @@
-import { entersState, getVoiceConnection, joinVoiceChannel, VoiceConnectionStatus } from "@discordjs/voice"
+import { entersState, getVoiceConnection, joinVoiceChannel, VoiceConnectionStatus, DiscordGatewayAdapterCreator } from "@discordjs/voice"
 import { ActionRowBuilder, ActivityType, ApplicationCommandType, ButtonBuilder, ButtonInteraction, ButtonStyle, ChatInputCommandInteraction, Client, CommandInteraction, ContextMenuCommandBuilder, EmbedBuilder, GatewayIntentBits, Interaction, Message, MessageContextMenuCommandInteraction, Routes, SelectMenuBuilder, SelectMenuInteraction, SlashCommandBuilder, SlashCommandUserOption } from "discord.js"
 import { getReadableString } from "./utils"
 import { StyledSpeaker, VoiceVoxClient } from "./voicevox"
@@ -245,7 +245,7 @@ export class Zundacord {
             const vc = joinVoiceChannel({
                 guildId: interaction.guildId,
                 channelId: memberVoiceChannel.id,
-                adapterCreator: interaction.guild.voiceAdapterCreator
+                adapterCreator: interaction.guild.voiceAdapterCreator as DiscordGatewayAdapterCreator
             })
             // register disconnection handler
             vc.on(VoiceConnectionStatus.Disconnected, async (oldState, newState) => {
