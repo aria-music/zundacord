@@ -20,7 +20,7 @@ services:
       context: .
       target: devcontainer
       cache_from:
-        - "ghcr.io/sarisia/zundacord/devcontainer"
+        - "ghcr.io/aria-music/zundacord/devcontainer"
 
     volumes:
       # Update this to wherever you want VS Code to mount the folder of your project

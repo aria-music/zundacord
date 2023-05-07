@@ -2,7 +2,7 @@
 
 Discord TTS Bot, powered by [VOICEVOX](https://voicevox.hiroshiba.jp/)
 
-![image](https://user-images.githubusercontent.com/33576079/224512072-a5485639-ef5c-4db2-a093-dd7b23d6ea04.png)
+![application screenshot](https://user-images.githubusercontent.com/33576079/224512072-a5485639-ef5c-4db2-a093-dd7b23d6ea04.png)
 
 # Alpha Version Warning!
 
@@ -21,10 +21,14 @@ v1. Bug report and feedback are always appreciated. Thanks!
 
 1. Create the Discord Application and invite the bot to your Discord server.
     - [Message Content Intent](https://support-dev.discord.com/hc/en-us/articles/4404772028055) is required.
-    - Zundacord requires `bot` and `applications.commands` OAuth2 scopes.
-    - For bot permissions, Zundacord requires `Connect` and `Speak`.
+    ![How to enable Message Content Intent](https://user-images.githubusercontent.com/43315234/236633333-98cfc41d-f455-4847-969e-3f56bd4f0a98.png)
+    - Zundacord requires `bot` and `applications.commands` OAuth2 scopes. (Look at the figure)
+    - For bot permissions, Zundacord requires `Connect` and `Speak`. (Look at the figure)
+    ![How to set permission](https://user-images.githubusercontent.com/43315234/236632923-e032ea59-4836-4bd2-bc02-ce538685d350.png)
     - To sum up, your bot invitation URL may look like: `https://discord.com/api/oauth2/authorize?client_id=<APPLICATION_ID>&permissions=3145728&scope=bot%20applications.commands`
+    ![How to get bot invitation URL](https://user-images.githubusercontent.com/43315234/236633215-dd1fb18a-a231-40df-b520-6cf259984f99.png)
 2. Copy `.env.example` and create `.env`. Put the Discord bot token to them.
+    ![How to get bot token](https://user-images.githubusercontent.com/43315234/236652944-13538e32-52d4-4dea-b063-f4fa1e1f8652.png)
 
 ## Run with Docker
 

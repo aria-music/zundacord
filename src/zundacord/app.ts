@@ -83,7 +83,7 @@ export class Zundacord {
 
         if (interaction.isChatInputCommand()) {
             // slash command
-            // voice, join, skip
+            // voice, join, summon, skip
             await this.handleSlash(interaction)
         } else if (interaction.isMessageContextMenuCommand()) {
             // context menu command
@@ -173,6 +173,7 @@ export class Zundacord {
                     await this.slashVoice(interaction)
                     break
                 case "join":
+                case "summon":
                     await this.slashJoin(interaction)
                     break
                 case "skip":
@@ -668,6 +669,7 @@ export class Zundacord {
                         .setDescription("specify username to get user's configurations")
                 ),
             new SlashCommandBuilder().setName("join").setDescription("Join the bot to the voice"),
+            new SlashCommandBuilder().setName("summon").setDescription("Join the bot to the voice (alias of `/join`)"),
             new SlashCommandBuilder().setName("skip").setDescription("Skip the message reading now"),
             new ContextMenuCommandBuilder().setName("Read this message").setType(ApplicationCommandType.Message)
         ].map(c => c.toJSON())
