@@ -15,7 +15,7 @@ const log = logger.child({ "module": "zundacord/app" })
 
 function zundaEmbed(): EmbedBuilder {
     return new EmbedBuilder()
-        .setFooter({ text: "sarisia/zundacord" })
+        .setFooter({ text: "aria-music/zundacord" })
 }
 
 
