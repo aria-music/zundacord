@@ -1,5 +1,5 @@
 import { entersState, getVoiceConnection, joinVoiceChannel, VoiceConnectionStatus } from "@discordjs/voice"
-import { ActionRowBuilder, ActivityType, ApplicationCommandType, ButtonBuilder, ButtonInteraction, ButtonStyle, ChatInputCommandInteraction, Client, CommandInteraction, ContextMenuCommandBuilder, EmbedBuilder, GatewayIntentBits, Interaction, Message, MessageContextMenuCommandInteraction, Routes, SelectMenuBuilder, SelectMenuInteraction, SlashCommandBuilder, SlashCommandUserOption } from "discord.js"
+import { ActionRowBuilder, ActivityType, ApplicationCommandType, ButtonBuilder, ButtonInteraction, ButtonStyle, ChatInputCommandInteraction, Client, CommandInteraction, ContextMenuCommandBuilder, EmbedBuilder, GatewayIntentBits, Interaction, Message, MessageContextMenuCommandInteraction, Routes, SelectMenuBuilder, SelectMenuInteraction, SlashCommandBuilder, SlashCommandUserOption, User } from "discord.js"
 import { getReadableString } from "./utils"
 import { StyledSpeaker, VoiceVoxClient } from "./voicevox"
 import { Player } from "./player"
@@ -147,7 +147,7 @@ export class Zundacord {
         interaction.reply({
             ephemeral: true,
             embeds: [
-                this.renderEmbedUserConfigurations(speaker, inspectUser ? `@${user.username}'s Configuration` : undefined, memberConfig.ttsEnabled)
+                this.renderEmbedUserConfigurations(speaker, inspectUser ?? undefined, memberConfig.ttsEnabled)
             ],
             components: !inspectUser ? [
                 this.renderButtonSelectTtsEnabled(memberConfig.ttsEnabled),
@@ -635,10 +635,15 @@ export class Zundacord {
         })
     }
 
-    renderEmbedUserConfigurations(speaker?: StyledSpeaker, title?: string, ttsEnabled?: boolean): EmbedBuilder {
-        return zundaEmbed()
+    renderEmbedUserConfigurations(speaker?: StyledSpeaker, inspectUser?: User, ttsEnabled?: boolean): EmbedBuilder {
+        const embedHeader = inspectUser ? zundaEmbed()
+                                            .setAuthor({ name: `${inspectUser.username}'s configuration`, iconURL: inspectUser.displayAvatarURL()})
+                                            .setDescription(`Showing ${inspectUser.toString()}'s configuration`)
+                                        : zundaEmbed()
+                                            .setTitle("Select your voice!");
+
+        return embedHeader
             .setColor(COLOR_ACTION)
-            .setTitle(title || "Select your voice!")
             .setFields(
                 {
                     "name": "TTS Enabled",
