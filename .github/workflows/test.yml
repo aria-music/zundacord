@@ -21,3 +21,4 @@ jobs:
           runCmd: |
             npm ci
             npm test
+            npm run prod
