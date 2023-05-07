@@ -607,25 +607,23 @@ export class Zundacord {
         // TODO: this is useless at this moment due to VOICEVOX engine's limitation
         // see #3
         this.voicevox.doInitializeSpeaker(`${speaker.styleId}`)
+
+        const currentMemberConfig = await this.config.getMemberConfig(interaction.guildId, interaction.user.id)
+        const info = await this.voicevox.speakerInfo(speaker.speaker.speaker_uuid)
+
         await interaction.update({
             embeds: [
+                this.renderEmbedUserConfigurations(speaker, undefined, currentMemberConfig.ttsEnabled, "Voice is updated!", COLOR_SUCCESS),
                 zundaEmbed()
-                    .setColor(COLOR_SUCCESS)
-                    .setTitle("Voice is set!")
-                    .setFields(
-                        {
-                            "name": "Speaker",
-                            "value": speaker.speaker.name,
-                            "inline": true,
-                        },
-                        {
-                            "name": "Style",
-                            "value": speaker.styleName,
-                            "inline": true,
-                        },
-                    )
+                    .setColor(COLOR_ACTION)
+                    .setTitle("You need to agree to the terms of service")
+                    .setDescription(info.policy)
             ],
-            components: []
+            components: [
+                this.renderButtonSelectTtsEnabled(currentMemberConfig.ttsEnabled),
+                await this.renderMenuSelectVoiceSpeaker(speaker.speaker.speaker_uuid),
+                ...await this.renderButtonSelectVoiceSpeakerStyle(speaker.speaker.speaker_uuid)
+            ]
         })
     }
 
@@ -636,26 +634,35 @@ export class Zundacord {
         memberConfig.ttsEnabled = enabled
         this.config.setMemberConfig(interaction.guildId, interaction.user.id, memberConfig)
 
+        const currentMemberConfig = await this.config.getMemberConfig(interaction.guildId, interaction.user.id)
+        const speaker = currentMemberConfig.voiceStyleId != undefined ? await this.voicevox.getSpeakerById(`${currentMemberConfig.voiceStyleId}`) : undefined
+        const info = speaker ? await this.voicevox.speakerInfo(speaker.speaker.speaker_uuid) : undefined
+
         await interaction.update({
             embeds: [
-                zundaEmbed()
-                    .setColor(COLOR_SUCCESS)
-                    .setTitle(`TTS ${enabled ? "Enabled" : "Disabled"}!`)
-                    .setDescription(`TTS is now ${enabled ? "enabled" : "disabled"}`)
+                this.renderEmbedUserConfigurations(speaker, undefined, currentMemberConfig.ttsEnabled, "TTS configuration is updated!", COLOR_SUCCESS),
+                ...info ? [zundaEmbed()
+                    .setColor(COLOR_ACTION)
+                    .setTitle("You need to agree to the terms of service")
+                    .setDescription(info.policy)] : []
             ],
-            components: []
+            components: [
+                this.renderButtonSelectTtsEnabled(currentMemberConfig.ttsEnabled),
+                await this.renderMenuSelectVoiceSpeaker(speaker?.speaker.speaker_uuid),
+                ...speaker ? await this.renderButtonSelectVoiceSpeakerStyle(speaker.speaker.speaker_uuid) : []
+            ]
         })
     }
 
-    renderEmbedUserConfigurations(speaker?: StyledSpeaker, inspectUser?: User, ttsEnabled?: boolean): EmbedBuilder {
+    renderEmbedUserConfigurations(speaker?: StyledSpeaker, inspectUser?: User, ttsEnabled?: boolean, title?: string, color?: number): EmbedBuilder {
         const embedHeader = inspectUser ? zundaEmbed()
-                                            .setAuthor({ name: `${inspectUser.username}'s configuration`, iconURL: inspectUser.displayAvatarURL()})
-                                            .setDescription(`Showing ${inspectUser.toString()}'s configuration`)
-                                        : zundaEmbed()
-                                            .setTitle("Select your voice!");
+            .setAuthor({ name: `${inspectUser.username}'s configuration`, iconURL: inspectUser.displayAvatarURL() })
+            .setDescription(`Showing ${inspectUser.toString()}'s configuration`)
+            : zundaEmbed()
+                .setTitle(title || "Select your voice!");
 
         return embedHeader
-            .setColor(COLOR_ACTION)
+            .setColor(color || COLOR_ACTION)
             .setFields(
                 {
                     "name": "TTS Enabled",
