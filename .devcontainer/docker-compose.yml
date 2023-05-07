@@ -19,6 +19,8 @@ services:
     build:
       context: .
       target: devcontainer
+      args:
+        WORKSPACE_DIR: /workspaces/zundacord
       cache_from:
         - "ghcr.io/aria-music/zundacord/devcontainer"
 

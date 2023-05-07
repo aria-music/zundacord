@@ -41,3 +41,9 @@ RUN apt-get update && export DEBIAN_FRONTEND=noninteractive && \
 # https://github.com/microsoft/vscode-dev-containers/blob/cda9aea1d48578fe2accf667b65a6c6d147d00d1/script-library/common-debian.sh#L208
 RUN echo "node ALL=(root) NOPASSWD:ALL" > /etc/sudoers.d/node && \
     chmod 0440 /etc/sudoers.d/node
+
+ARG WORKSPACE_DIR
+WORKDIR $WORKSPACE_DIR
+
+# expose npm cache to workspace to enable ci caching
+RUN sudo -u node npm config set cache=.npm
