@@ -28,7 +28,7 @@ v1. Bug report and feedback are always appreciated. Thanks!
     - To sum up, your bot invitation URL may look like: `https://discord.com/api/oauth2/authorize?client_id=<APPLICATION_ID>&permissions=3145728&scope=bot%20applications.commands`
     ![How to get bot invitation URL](https://user-images.githubusercontent.com/43315234/236633215-dd1fb18a-a231-40df-b520-6cf259984f99.png)
 2. Copy `.env.example` and create `.env`. Put the Discord bot token to them.
-    ![How to get bot token](https://user-images.githubusercontent.com/43315234/236634347-75f2dc2e-0378-4464-ad66-4d696154caf3.png)
+    ![How to get bot token](https://user-images.githubusercontent.com/43315234/236652944-13538e32-52d4-4dea-b063-f4fa1e1f8652.png)
 
 ## Run with Docker
 
