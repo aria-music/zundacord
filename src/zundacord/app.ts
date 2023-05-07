@@ -501,18 +501,30 @@ export class Zundacord {
             throw new Error(`speakerUuid does not exist: ${speakerUuid}`)
         }
 
-        // TODO: make pager
-        return [
-            new ActionRowBuilder<ButtonBuilder>()
+        // TODO: handle case if character has more than 10 styles
+        const rows: ActionRowBuilder<ButtonBuilder>[] = []
+        // max num of pages (rows): 2
+        // page size (entry per page): 5
+        const page_size = 5
+        for (let i = 0; i < 2; i++) {
+            // does this page exists?
+            if (speaker.styles.length <= i * page_size) {
+                break
+            }
+
+            rows.push(new ActionRowBuilder<ButtonBuilder>()
                 .addComponents(
-                    ...speaker.styles.map((st) => {
+                    ...speaker.styles.slice(i * page_size, (i + 1) * page_size).map((st) => {
                         return new ButtonBuilder()
                             .setLabel(st.name)
                             .setCustomId(`speakerStyleSelected/${st.id}`)
                             .setStyle(ButtonStyle.Primary)
                     })
                 )
-        ]
+            )
+        }
+
+        return rows
     }
 
     renderButtonSelectTtsEnabled(currentTtsEnabled: boolean): ActionRowBuilder<ButtonBuilder> {
