@@ -1,5 +1,5 @@
 import { entersState, getVoiceConnection, joinVoiceChannel, VoiceConnectionStatus } from "@discordjs/voice"
-import { ActionRowBuilder, ActivityType, ApplicationCommandType, ButtonBuilder, ButtonInteraction, ButtonStyle, ChatInputCommandInteraction, Client, CommandInteraction, ContextMenuCommandBuilder, EmbedBuilder, GatewayIntentBits, Interaction, Message, MessageContextMenuCommandInteraction, Routes, SelectMenuBuilder, SelectMenuInteraction, SlashCommandBuilder, SlashCommandUserOption, User } from "discord.js"
+import { ActionRowBuilder, ActivityType, ApplicationCommandType, ButtonBuilder, ButtonInteraction, ButtonStyle, ChatInputCommandInteraction, Client, CommandInteraction, ContextMenuCommandBuilder, EmbedBuilder, GatewayIntentBits, GuildBasedChannel, Interaction, Message, MessageContextMenuCommandInteraction, Routes, SelectMenuBuilder, SelectMenuInteraction, SlashCommandBuilder, SlashCommandUserOption, User, VoiceChannel, VoiceState } from "discord.js"
 import { getReadableString } from "./utils"
 import { StyledSpeaker, VoiceVoxClient } from "./voicevox"
 import { Player } from "./player"
@@ -9,6 +9,7 @@ import { logger } from "./logger"
 const COLOR_SUCCESS = 0x47ff94
 const COLOR_FAILURE = 0xff4a47
 const COLOR_ACTION = 0x45b5ff
+const TIMEOUT = 5000 //ms
 
 const log = logger.child({ "module": "zundacord/app" })
 
@@ -28,6 +29,7 @@ export class Zundacord {
     private readonly guildPlayers: Map<string, Player> = new Map()
 
     private applicationId: string = ""
+    private timeoutId: NodeJS.Timeout | undefined = undefined
 
     constructor(token: string, apiEndpoint: string) {
         this.token = token
@@ -47,6 +49,8 @@ export class Zundacord {
         this.client.on("ready", this.onReady.bind(this))
         this.client.on("messageCreate", this.onMessageCreate.bind(this))
         this.client.on("interactionCreate", this.onInteractionCreate.bind(this))
+        this.client.on("voiceStateUpdate", this.onVoiceStateUpdate.bind(this));
+        log.debug(`registerd cmds`);
     }
 
     async start(): Promise<void> {
@@ -127,6 +131,42 @@ export class Zundacord {
         }
 
         this.queueMessage(msg, memberConfig?.voiceStyleId)
+    }
+
+    async onVoiceStateUpdate(oldState: VoiceState, newState: VoiceState)
+    {
+        //someone joined voice
+        if(!oldState.channelId && newState.channelId) {
+            log.debug("someone joined voice")
+            return
+        }
+
+        //zundamon left voice
+        const clientId = this.client.user?.id ?? ""
+        if(newState.id === clientId) {
+            log.debug("zundamon left voice")
+            return
+        }
+
+        const cachedChannel = oldState.guild.channels.cache.find(c => c.id === oldState.channelId)
+        if(cachedChannel === undefined) {
+            return
+        }
+
+        //someone left voice where zundamon is not
+        if(await this.checkAloneInVoiceChannel(cachedChannel) === false) {
+            log.debug("someone left voice where zundamon is not")
+            return
+        }
+
+        //someone left voice where zundamon is
+        log.debug("someone left voice where zundamon is")
+        clearTimeout(this.timeoutId)
+        this.timeoutId = setTimeout(async () => {
+            if(await this.checkAloneInVoiceChannel(cachedChannel)) {
+                getVoiceConnection(oldState.guild.id)?.disconnect();
+            }
+        }, TIMEOUT)
     }
 
     async slashVoice(interaction: CommandInteraction<"cached">) {
@@ -732,5 +772,12 @@ export class Zundacord {
             styleId: styleId,
             message: readableStr,
         })
+    }
+
+    async checkAloneInVoiceChannel(channel: GuildBasedChannel) {
+        if(!channel.isVoiceBased()) return false;
+
+        const members = (await channel.fetch(true) as VoiceChannel).members;
+        return members.size === 1 && members.has(this.applicationId);
     }
 }
