@@ -29,7 +29,6 @@ export class Zundacord {
     private readonly guildPlayers: Map<string, Player> = new Map()
 
     private applicationId: string = ""
-    private timeoutId: NodeJS.Timeout | undefined = undefined
 
     constructor(token: string, apiEndpoint: string) {
         this.token = token
@@ -147,8 +146,7 @@ export class Zundacord {
         }
 
         log.debug("zundamon is alone ;;")
-        clearTimeout(this.timeoutId)
-        this.timeoutId = setTimeout(async () => {
+        setTimeout(async () => {
             if(await this.checkAloneInVoiceChannel(cachedChannel)) {
                 getVoiceConnection(oldState.guild.id)?.disconnect();
             }
