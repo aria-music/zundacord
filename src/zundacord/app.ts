@@ -135,32 +135,18 @@ export class Zundacord {
 
     async onVoiceStateUpdate(oldState: VoiceState, newState: VoiceState)
     {
-        //someone joined voice
-        if(!oldState.channelId && newState.channelId) {
-            log.debug("someone joined voice")
-            return
-        }
-
-        //zundamon left voice
-        const clientId = this.client.user?.id ?? ""
-        if(newState.id === clientId) {
-            log.debug("zundamon left voice")
-            return
-        }
-
-        const cachedChannel = oldState.guild.channels.cache.find(c => c.id === oldState.channelId)
+        const cid = getVoiceConnection(oldState.guild.id)?.joinConfig.channelId ?? ""
+        const cachedChannel = oldState.guild.channels.cache.find(c => c.id === cid)
         if(cachedChannel === undefined) {
             return
         }
 
-        //someone left voice where zundamon is not
-        if(await this.checkAloneInVoiceChannel(cachedChannel) === false) {
-            log.debug("someone left voice where zundamon is not")
+        if(!await this.checkAloneInVoiceChannel(cachedChannel)) {
+            log.debug("zundamon is not alone")
             return
         }
 
-        //someone left voice where zundamon is
-        log.debug("someone left voice where zundamon is")
+        log.debug("zundamon is alone ;;")
         clearTimeout(this.timeoutId)
         this.timeoutId = setTimeout(async () => {
             if(await this.checkAloneInVoiceChannel(cachedChannel)) {
