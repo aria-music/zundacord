@@ -361,7 +361,7 @@ export class Zundacord {
             return zundaEmbed()
                 .setColor(COLOR_SUCCESS)
                 .setTitle("Purged!")
-                .setDescription("The bot was purged by " + interaction.user + ".")
+                .setDescription("The bot was purged by " + interaction.user.username + ".")
         })()
 
         interaction.reply({
