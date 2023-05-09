@@ -132,7 +132,7 @@ export class Zundacord {
         this.queueMessage(msg, memberConfig?.voiceStyleId)
     }
 
-    async onVoiceStateUpdate(oldState: VoiceState, newState: VoiceState)
+    onVoiceStateUpdate(oldState: VoiceState, newState: VoiceState)
     {
         const cid = getVoiceConnection(oldState.guild.id)?.joinConfig.channelId ?? ""
         const channel = oldState.guild.channels.cache.find(c => c.id === cid)
@@ -140,17 +140,14 @@ export class Zundacord {
             return
         }
 
-        if(channel.members.size !== 1 || !channel.members.has(this.applicationId)) {
-            log.debug("zundamon is not alone")
-            return
+        if(channel.members.size === 1 && channel.members.has(this.applicationId)) {
+            log.debug("zundamon is alone ;;")
+            setTimeout(() => {
+                if(channel.members.size === 1 && channel.members.has(this.applicationId)) {
+                    getVoiceConnection(oldState.guild.id)?.disconnect();
+                }
+            }, TIMEOUT)
         }
-
-        log.debug("zundamon is alone ;;")
-        setTimeout(async () => {
-            if(channel.members.size === 1 && channel.members.has(this.applicationId)) {
-                getVoiceConnection(oldState.guild.id)?.disconnect();
-            }
-        }, TIMEOUT)
     }
 
     async slashVoice(interaction: CommandInteraction<"cached">) {
