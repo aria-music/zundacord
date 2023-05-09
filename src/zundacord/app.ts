@@ -134,8 +134,12 @@ export class Zundacord {
 
     onVoiceStateUpdate(oldState: VoiceState, newState: VoiceState)
     {
-        const cid = getVoiceConnection(oldState.guild.id)?.joinConfig.channelId ?? ""
-        const channel = oldState.guild.channels.cache.find(c => c.id === cid)
+        const vc = getVoiceConnection(oldState.guild.id)
+        if(!vc) {
+            return
+        }
+
+        const channel = oldState.guild.channels.cache.find(c => c.id === vc.joinConfig.channelId)
         if(channel === undefined || !channel.isVoiceBased()) {
             return
         }
@@ -144,7 +148,7 @@ export class Zundacord {
             log.debug("zundamon is alone ;;")
             setTimeout(() => {
                 if(channel.members.size === 1 && channel.members.has(this.applicationId)) {
-                    getVoiceConnection(oldState.guild.id)?.disconnect();
+                    vc.disconnect();
                 }
             }, TIMEOUT)
         }
