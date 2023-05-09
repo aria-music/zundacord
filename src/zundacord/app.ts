@@ -135,19 +135,19 @@ export class Zundacord {
     async onVoiceStateUpdate(oldState: VoiceState, newState: VoiceState)
     {
         const cid = getVoiceConnection(oldState.guild.id)?.joinConfig.channelId ?? ""
-        const cachedChannel = oldState.guild.channels.cache.find(c => c.id === cid)
-        if(cachedChannel === undefined) {
+        const channel = oldState.guild.channels.cache.find(c => c.id === cid)
+        if(channel === undefined || !channel.isVoiceBased()) {
             return
         }
 
-        if(!await this.checkAloneInVoiceChannel(cachedChannel)) {
+        if(channel.members.size !== 1 || !channel.members.has(this.applicationId)) {
             log.debug("zundamon is not alone")
             return
         }
 
         log.debug("zundamon is alone ;;")
         setTimeout(async () => {
-            if(await this.checkAloneInVoiceChannel(cachedChannel)) {
+            if(channel.members.size === 1 && channel.members.has(this.applicationId)) {
                 getVoiceConnection(oldState.guild.id)?.disconnect();
             }
         }, TIMEOUT)
@@ -756,12 +756,5 @@ export class Zundacord {
             styleId: styleId,
             message: readableStr,
         })
-    }
-
-    async checkAloneInVoiceChannel(channel: GuildBasedChannel) {
-        if(!channel.isVoiceBased()) return false;
-
-        const members = (await channel.fetch(true) as VoiceChannel).members;
-        return members.size === 1 && members.has(this.applicationId);
     }
 }
