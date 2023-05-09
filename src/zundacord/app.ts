@@ -350,7 +350,6 @@ export class Zundacord {
             try {
                 this.doPurge(ctx.guildId)
             } catch (e) {
-                log.error(e)
                 log.error({ ...ctx, err: e }, `unhandled error`)
                 return zundaEmbed()
                     .setColor(COLOR_FAILURE)
