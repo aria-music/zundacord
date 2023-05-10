@@ -338,7 +338,8 @@ export class Zundacord {
         const embed = (() => {
             // purge from voice
             // check current voice state
-            if (!getVoiceConnection(ctx.guildId)) {
+            const vc = getVoiceConnection(ctx.guildId)
+            if (!vc) {
                 return zundaEmbed()
                     .setColor(COLOR_FAILURE)
                     .setTitle("Cannot purge")
@@ -348,7 +349,7 @@ export class Zundacord {
             // true purge
             log.debug(ctx, "the bot is in voice. Purging...")
             try {
-                this.doPurge(ctx.guildId)
+                vc.destroy()
             } catch (e) {
                 log.error({ ...ctx, err: e }, `unhandled error`)
                 return zundaEmbed()
@@ -367,19 +368,6 @@ export class Zundacord {
             ephemeral: true,
             embeds: [embed]
         })
-    }
-
-    doPurge(guildId: string) {
-        // assert
-        const vc = getVoiceConnection(guildId)
-        if (!vc) {
-            log.debug(`The bot is not in voice channel. guildId: ${guildId}`)
-            throw new Error("bot is not in voice")
-        }
-        // do purge
-        vc.destroy()
-
-        // TODO: assertとdestroyをアトミックにやったほうが良い
     }
 
     async handleContextMenu(interaction: MessageContextMenuCommandInteraction<"cached">) {
