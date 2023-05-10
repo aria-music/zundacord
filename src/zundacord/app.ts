@@ -361,7 +361,7 @@ export class Zundacord {
             return zundaEmbed()
                 .setColor(COLOR_SUCCESS)
                 .setTitle("Disconnected!")
-                .setDescription(`The bot was disconnected by ${interaction.user.username}.`)
+                .setDescription(`The bot was disconnected successfully.`)
         })()
 
         interaction.reply({
