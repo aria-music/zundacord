@@ -83,7 +83,7 @@ export class Zundacord {
 
         if (interaction.isChatInputCommand()) {
             // slash command
-            // voice, join, summon, skip, purge
+            // voice, join, summon, skip, disconnect
             await this.handleSlash(interaction)
         } else if (interaction.isMessageContextMenuCommand()) {
             // context menu command
@@ -179,8 +179,8 @@ export class Zundacord {
                 case "skip":
                     await this.slashSkip(interaction)
                     break
-                case "purge":
-                    await this.slashPurge(interaction)
+                case "disconnect":
+                    await this.slashDisconnect(interaction)
                     break
                 default:
                     log.debug(ctx, `unknown slash command: ${interaction.commandName}`)
@@ -326,7 +326,7 @@ export class Zundacord {
         })
     }
 
-    async slashPurge(interaction: CommandInteraction<"cached">) {
+    async slashDisconnect(interaction: CommandInteraction<"cached">) {
         const ctx = {
             guild: interaction.guild.name,
             guildId: interaction.guildId,
@@ -336,18 +336,18 @@ export class Zundacord {
         }
 
         const embed = (() => {
-            // purge from voice
+            // disconnect from voice
             // check current voice state
             const vc = getVoiceConnection(ctx.guildId)
             if (!vc) {
                 return zundaEmbed()
                     .setColor(COLOR_FAILURE)
-                    .setTitle("Cannot purge")
+                    .setTitle("Cannot disconnect")
                     .setDescription("The bot is not in voice")
             }
 
-            // true purge
-            log.debug(ctx, "the bot is in voice. Purging...")
+            // true disconnect
+            log.debug(ctx, "the bot is in voice. Disconnecting...")
             try {
                 vc.destroy()
             } catch (e) {
@@ -355,13 +355,13 @@ export class Zundacord {
                 return zundaEmbed()
                     .setColor(COLOR_FAILURE)
                     .setTitle("Unhandled error")
-                    .setDescription("Contact admin. " + e)
+                    .setDescription(`Contact admin. ${e}`)
             }
-            log.debug(ctx, "purged by " + ctx.user)
+            log.debug(ctx, `disconnected by ${ctx.user}`)
             return zundaEmbed()
                 .setColor(COLOR_SUCCESS)
-                .setTitle("Purged!")
-                .setDescription("The bot was purged by " + interaction.user.username + ".")
+                .setTitle("Disconnected!")
+                .setDescription(`The bot was disconnected by ${interaction.user.username}.`)
         })()
 
         interaction.reply({
@@ -742,7 +742,7 @@ export class Zundacord {
             new SlashCommandBuilder().setName("join").setDescription("Join the bot to the voice"),
             new SlashCommandBuilder().setName("summon").setDescription("Join the bot to the voice (alias of `/join`)"),
             new SlashCommandBuilder().setName("skip").setDescription("Skip the message reading now"),
-            new SlashCommandBuilder().setName("purge").setDescription("Purge bot from voice channel"),
+            new SlashCommandBuilder().setName("disconnect").setDescription("Disconnect bot from voice channel"),
             new ContextMenuCommandBuilder().setName("Read this message").setType(ApplicationCommandType.Message)
         ].map(c => c.toJSON())
 
