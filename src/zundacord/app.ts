@@ -742,7 +742,7 @@ export class Zundacord {
             new SlashCommandBuilder().setName("join").setDescription("Join the bot to the voice"),
             new SlashCommandBuilder().setName("summon").setDescription("Join the bot to the voice (alias of `/join`)"),
             new SlashCommandBuilder().setName("skip").setDescription("Skip the message reading now"),
-            new SlashCommandBuilder().setName("disconnect").setDescription("Disconnect bot from voice channel"),
+            new SlashCommandBuilder().setName("disconnect").setDescription("Disconnect the bot from the voice"),
             new ContextMenuCommandBuilder().setName("Read this message").setType(ApplicationCommandType.Message)
         ].map(c => c.toJSON())
 
