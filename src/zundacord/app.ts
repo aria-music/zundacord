@@ -354,8 +354,8 @@ export class Zundacord {
                 log.error({ ...ctx, err: e }, `unhandled error`)
                 return zundaEmbed()
                     .setColor(COLOR_FAILURE)
-                    .setTitle("Unhandled error")
-                    .setDescription(`Contact admin. ${e}`)
+                    .setTitle("Internal error")
+                    .setDescription("Try again later")
             }
             log.debug(ctx, `disconnected by ${ctx.user}`)
             return zundaEmbed()
