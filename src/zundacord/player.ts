@@ -37,14 +37,12 @@ export class Player {
 
     autoDisconnect(vc: VoiceConnection, channel: VoiceBasedChannel, appId: string, timeout: number = 5000) {
         clearTimeout(this.disconnectTimeoutId)
-        if(channel.members.size === 1 && channel.members.has(appId)) {
-            this.disconnectTimeoutId = setTimeout(() => {
-                if(channel.members.size === 1 && channel.members.has(appId)) {
-                    vc.disconnect();
-                }
-                this.disconnectTimeoutId = undefined
-            }, timeout)
-        }
+        this.disconnectTimeoutId = setTimeout(() => {
+            if(channel.members.size === 1 && channel.members.has(appId)) {
+                vc.disconnect();
+            }
+            this.disconnectTimeoutId = undefined
+        }, timeout)
     }
 
     skipCurrentMessage() {
