@@ -1,5 +1,5 @@
 import { entersState, getVoiceConnection, joinVoiceChannel, VoiceConnectionStatus } from "@discordjs/voice"
-import { ActionRowBuilder, ActivityType, ApplicationCommandType, ButtonBuilder, ButtonInteraction, ButtonStyle, ChatInputCommandInteraction, Client, CommandInteraction, ContextMenuCommandBuilder, EmbedBuilder, GatewayIntentBits, Interaction, Message, MessageContextMenuCommandInteraction, Routes, SelectMenuBuilder, SelectMenuInteraction, SlashCommandBuilder, SlashCommandUserOption, User } from "discord.js"
+import { ActionRowBuilder, ActivityType, ApplicationCommandType, ButtonBuilder, ButtonInteraction, ButtonStyle, ChatInputCommandInteraction, Client, CommandInteraction, ContextMenuCommandBuilder, EmbedBuilder, GatewayIntentBits, GuildBasedChannel, Interaction, Message, MessageContextMenuCommandInteraction, Routes, SelectMenuBuilder, SelectMenuInteraction, SlashCommandBuilder, SlashCommandUserOption, User, VoiceChannel, VoiceState } from "discord.js"
 import { getReadableString } from "./utils"
 import { StyledSpeaker, VoiceVoxClient } from "./voicevox"
 import { Player } from "./player"
@@ -9,6 +9,7 @@ import { logger } from "./logger"
 const COLOR_SUCCESS = 0x47ff94
 const COLOR_FAILURE = 0xff4a47
 const COLOR_ACTION = 0x45b5ff
+const AUTO_DISCONNECT_TIMEOUT = 5000 //ms
 
 const log = logger.child({ "module": "zundacord/app" })
 
@@ -47,6 +48,8 @@ export class Zundacord {
         this.client.on("ready", this.onReady.bind(this))
         this.client.on("messageCreate", this.onMessageCreate.bind(this))
         this.client.on("interactionCreate", this.onInteractionCreate.bind(this))
+        this.client.on("voiceStateUpdate", this.onVoiceStateUpdate.bind(this));
+        log.debug(`registerd cmds`);
     }
 
     async start(): Promise<void> {
@@ -127,6 +130,27 @@ export class Zundacord {
         }
 
         this.queueMessage(msg, memberConfig?.voiceStyleId)
+    }
+
+    onVoiceStateUpdate(oldState: VoiceState, newState: VoiceState)
+    {
+        const vc = getVoiceConnection(newState.guild.id)
+        if(!vc) {
+            return
+        }
+
+        const player = this.guildPlayers.get(newState.guild.id)
+        if (!player) {
+            log.debug(`bot is not in vc (player not found)`)
+            return
+        }
+
+        const channel = newState.guild.channels.cache.find(c => c.id === vc.joinConfig.channelId)
+        if(channel === undefined || !channel.isVoiceBased()) {
+            return
+        }
+
+        player.autoDisconnect(vc, channel, this.applicationId, AUTO_DISCONNECT_TIMEOUT);
     }
 
     async slashVoice(interaction: CommandInteraction<"cached">) {
