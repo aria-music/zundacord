@@ -9,7 +9,7 @@ import { logger } from "./logger"
 const COLOR_SUCCESS = 0x47ff94
 const COLOR_FAILURE = 0xff4a47
 const COLOR_ACTION = 0x45b5ff
-const TIMEOUT = 5000 //ms
+const AUTO_DISCONNECT_TIMEOUT = 5000 //ms
 
 const log = logger.child({ "module": "zundacord/app" })
 
@@ -134,24 +134,23 @@ export class Zundacord {
 
     onVoiceStateUpdate(oldState: VoiceState, newState: VoiceState)
     {
-        const vc = getVoiceConnection(oldState.guild.id)
+        const vc = getVoiceConnection(newState.guild.id)
         if(!vc) {
             return
         }
 
-        const channel = oldState.guild.channels.cache.find(c => c.id === vc.joinConfig.channelId)
+        const player = this.guildPlayers.get(newState.guild.id)
+        if (!player) {
+            log.debug(`bot is not in vc (player not found)`)
+            return
+        }
+
+        const channel = newState.guild.channels.cache.find(c => c.id === vc.joinConfig.channelId)
         if(channel === undefined || !channel.isVoiceBased()) {
             return
         }
 
-        if(channel.members.size === 1 && channel.members.has(this.applicationId)) {
-            log.debug("zundamon is alone ;;")
-            setTimeout(() => {
-                if(channel.members.size === 1 && channel.members.has(this.applicationId)) {
-                    vc.disconnect();
-                }
-            }, TIMEOUT)
-        }
+        player.autoDisconnect(vc, channel, this.applicationId, AUTO_DISCONNECT_TIMEOUT);
     }
 
     async slashVoice(interaction: CommandInteraction<"cached">) {

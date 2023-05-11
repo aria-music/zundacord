@@ -3,6 +3,7 @@ import { VoiceVoxClient } from "./voicevox";
 import { Readable } from "stream";
 import { once } from 'node:events'
 import { logger } from "./logger"
+import { VoiceBasedChannel } from "discord.js";
 
 
 interface Message {
@@ -22,6 +23,7 @@ export class Player {
     private readonly audioQueueSize: number = 5
 
     private running: boolean = false
+    private disconnectTimeoutId: NodeJS.Timeout | undefined = undefined;
 
     constructor(client: VoiceVoxClient) {
         this.client = client
@@ -31,6 +33,18 @@ export class Player {
 
     setStreamTarget(vc: VoiceConnection) {
         vc.subscribe(this.audioPlayer)
+    }
+
+    autoDisconnect(vc: VoiceConnection, channel: VoiceBasedChannel, appId: string, timeout: number = 5000) {
+        clearTimeout(this.disconnectTimeoutId)
+        if(channel.members.size === 1 && channel.members.has(appId)) {
+            this.disconnectTimeoutId = setTimeout(() => {
+                if(channel.members.size === 1 && channel.members.has(appId)) {
+                    vc.disconnect();
+                }
+                this.disconnectTimeoutId = undefined
+            }, timeout)
+        }
     }
 
     skipCurrentMessage() {
