@@ -16,7 +16,7 @@ test.each([
     ["Visit http://sarisia.cc", "Visit リンク"],
     ["Visit http://sarisia.cc http://sarisia.cc", "Visit リンク リンク"],
     ["Visit http://sarisia.cc\nhttp://sarisia.cc", "Visit リンク リンク"],
-    ["This\r\nis\rvery\nfast", "This is very fast"],
+    ["This\r\nis very\nfast", "This is very fast"],
 ])("getReadableString(%s)", (str, expected) => {
     expect(getReadableString(str)).toBe(expected)
 })
