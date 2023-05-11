@@ -83,7 +83,7 @@ export class Zundacord {
 
         if (interaction.isChatInputCommand()) {
             // slash command
-            // voice, join, summon, skip
+            // voice, join, summon, skip, disconnect
             await this.handleSlash(interaction)
         } else if (interaction.isMessageContextMenuCommand()) {
             // context menu command
@@ -178,6 +178,9 @@ export class Zundacord {
                     break
                 case "skip":
                     await this.slashSkip(interaction)
+                    break
+                case "disconnect":
+                    await this.slashDisconnect(interaction)
                     break
                 default:
                     log.debug(ctx, `unknown slash command: ${interaction.commandName}`)
@@ -315,6 +318,50 @@ export class Zundacord {
                 .setColor(COLOR_SUCCESS)
                 .setTitle("Skipped!")
                 .setDescription("Skipped the message")
+        })()
+
+        interaction.reply({
+            ephemeral: true,
+            embeds: [embed]
+        })
+    }
+
+    async slashDisconnect(interaction: CommandInteraction<"cached">) {
+        const ctx = {
+            guild: interaction.guild.name,
+            guildId: interaction.guildId,
+            user: interaction.member.displayName,
+            userId: interaction.member.id,
+            commandName: interaction.commandName
+        }
+
+        const embed = (() => {
+            // disconnect from voice
+            // check current voice state
+            const vc = getVoiceConnection(ctx.guildId)
+            if (!vc) {
+                return zundaEmbed()
+                    .setColor(COLOR_FAILURE)
+                    .setTitle("Cannot disconnect")
+                    .setDescription("The bot is not in voice")
+            }
+
+            // true disconnect
+            log.debug(ctx, "the bot is in voice. Disconnecting...")
+            try {
+                vc.destroy()
+            } catch (e) {
+                log.error({ ...ctx, err: e }, `unhandled error`)
+                return zundaEmbed()
+                    .setColor(COLOR_FAILURE)
+                    .setTitle("Internal error")
+                    .setDescription("Try again later")
+            }
+            log.debug(ctx, `disconnected by ${ctx.user}`)
+            return zundaEmbed()
+                .setColor(COLOR_SUCCESS)
+                .setTitle("Disconnected!")
+                .setDescription(`The bot was disconnected successfully.`)
         })()
 
         interaction.reply({
@@ -695,6 +742,7 @@ export class Zundacord {
             new SlashCommandBuilder().setName("join").setDescription("Join the bot to the voice"),
             new SlashCommandBuilder().setName("summon").setDescription("Join the bot to the voice (alias of `/join`)"),
             new SlashCommandBuilder().setName("skip").setDescription("Skip the message reading now"),
+            new SlashCommandBuilder().setName("disconnect").setDescription("Disconnect the bot from the voice"),
             new ContextMenuCommandBuilder().setName("Read this message").setType(ApplicationCommandType.Message)
         ].map(c => c.toJSON())
 
