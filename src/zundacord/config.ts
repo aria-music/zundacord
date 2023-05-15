@@ -9,13 +9,13 @@ interface Config {
 }
 
 interface GuildConfig {
-    members: { [k: string]: MemberConfig | undefined },
-    language: string
+    members: { [k: string]: MemberConfig | undefined }
 }
 
 export interface MemberConfig {
     ttsEnabled: boolean
-    voiceStyleId?: number
+    voiceStyleId?: number,
+    language?: string
 }
 
 export interface IConfigManager {
@@ -76,6 +76,7 @@ export class JsonConfig implements IConfigManager {
         // populate default value
         return {
             ttsEnabled: true,
+            language: "en_US",
             ...rawConfig
         }
     }
@@ -83,32 +84,12 @@ export class JsonConfig implements IConfigManager {
     async setMemberConfig(guildId: string, userId: string, config: MemberConfig): Promise<void> {
         if (this.config.guilds[guildId] === undefined) {
             this.config.guilds[guildId] = {
-                members: {},
-                language: ""
+                members: {}
             }
         }
 
         // @ts-ignore
         this.config.guilds[guildId].members[userId] = config
-        this.writeConfig()
-    }
-
-    async getGuildLanguage(guildId: string): Promise<string | undefined> {
-        const rawConfig = this.config.guilds[guildId]?.language
-        // populate default value
-        return rawConfig
-    }
-
-    async setGuildLanguage(guildId: string, language: string): Promise<void> {
-        if (this.config.guilds[guildId] === undefined) {
-            this.config.guilds[guildId] = {
-                members: {},
-                language: ""
-            }
-        }
-
-        // @ts-ignore
-        this.config.guilds[guildId].language = language
         this.writeConfig()
     }
 }
