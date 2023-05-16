@@ -14,8 +14,7 @@ interface GuildConfig {
 
 export interface MemberConfig {
     ttsEnabled: boolean
-    voiceStyleId?: number,
-    language?: string
+    voiceStyleId?: number
 }
 
 export interface IConfigManager {
@@ -76,7 +75,6 @@ export class JsonConfig implements IConfigManager {
         // populate default value
         return {
             ttsEnabled: true,
-            language: "en_US",
             ...rawConfig
         }
     }
