@@ -22,7 +22,7 @@
   "homepage": "https://github.com/sarisia/zundacord#readme",
   "devDependencies": {
     "jest": "^29.5.0",
-    "npm-check-updates": "^16.10.12",
+    "npm-check-updates": "^16.13.0",
     "ts-jest": "^29.1.0",
     "typescript": "^5.0.4"
   },
