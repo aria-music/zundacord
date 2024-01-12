@@ -6,7 +6,7 @@ export function getReadableString(str: string): string {
 
     // simple replaces
     ret = ret
-        .replace(/\r?\n/g, " ") // seems voicevox reads line breaks
+        .replace(/\r?\n/g, " ") // to handle urls separated by line breaks
         .replace(/～/g, "ー") // voicevox does not read ～ but does for ー, so replace it
         .replace(/https?:\/\/[^\s]+/g, "リンク") // http(s) url
         .replace(/<a?:[^:]+:[0-9]+>/g, "") // discord emoji & Animated emoji
