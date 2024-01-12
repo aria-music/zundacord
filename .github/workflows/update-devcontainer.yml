@@ -9,7 +9,7 @@ on:
 
 jobs:
   build:
-    uses: sarisia/workflows/.github/workflows/update-devcontainer.yml@55280dcb719a5d5e16a4f555bc03467b2f0bdb05
+    uses: sarisia/workflows/.github/workflows/update-devcontainer.yml@31e439490c78f47b75fdf451b3912a18da028df0
     permissions:
       contents: read
       packages: write
