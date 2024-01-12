@@ -34,6 +34,7 @@
     "discord.js": "^14.11.0",
     "pino": "^8.14.1",
     "pino-pretty": "^10.0.0",
-    "sodium": "^3.0.2"
+    "sodium": "^3.0.2",
+    "wanakana": "^5.3.1"
   }
 }
