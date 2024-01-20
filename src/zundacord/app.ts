@@ -539,7 +539,8 @@ export class Zundacord {
     }
 
     async renderMenuSelectVoiceSpeaker(selectedSpeakerUuid?: string): Promise<ActionRowBuilder<StringSelectMenuBuilder>> {
-        const speakers = await this.voicevox.getSpeakers()
+        // FIXME: this slicing is temporary workaround until we get proper pager implementation
+        const speakers = (await this.voicevox.getSpeakers()).slice(0, 25)
 
         if (!speakers.length) {
             throw new Error("no voice provided from engine?")
