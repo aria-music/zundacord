@@ -1,9 +1,9 @@
 import { entersState, getVoiceConnection, joinVoiceChannel, VoiceConnectionStatus } from "@discordjs/voice"
-import { ActionRowBuilder, ActivityType, ApplicationCommandType, ButtonBuilder, ButtonInteraction, ButtonStyle, ChatInputCommandInteraction, Client, CommandInteraction, ContextMenuCommandBuilder, EmbedBuilder, GatewayIntentBits, GuildBasedChannel, Interaction, Message, MessageContextMenuCommandInteraction, Routes, SelectMenuBuilder, SelectMenuInteraction, SlashCommandBuilder, SlashCommandUserOption, User, VoiceChannel, VoiceState } from "discord.js"
+import { ActionRowBuilder, ActivityType, ApplicationCommandType, ButtonBuilder, ButtonInteraction, ButtonStyle, ChatInputCommandInteraction, Client, CommandInteraction, ContextMenuCommandBuilder, EmbedBuilder, GatewayIntentBits, Interaction, Message, MessageContextMenuCommandInteraction, Routes, SelectMenuInteraction, SlashCommandBuilder, SlashCommandUserOption, StringSelectMenuBuilder, User, VoiceState } from "discord.js"
 import { getReadableString } from "./utils"
 import { StyledSpeaker, VoiceVoxClient } from "./voicevox"
 import { Player } from "./player"
-import { IConfigManager, JsonConfig, MemberConfig } from "./config"
+import { IConfigManager, JsonConfig } from "./config"
 import { logger } from "./logger"
 
 const COLOR_SUCCESS = 0x47ff94
@@ -92,7 +92,7 @@ export class Zundacord {
             // context menu command
             // message context: Read this message
             await this.handleContextMenu(interaction)
-        } else if (interaction.isSelectMenu()) {
+        } else if (interaction.isStringSelectMenu()) {
             // select menu in command response
             // speakerSelected
             await this.handleSelectMenuResponse(interaction)
@@ -132,10 +132,9 @@ export class Zundacord {
         this.queueMessage(msg, memberConfig?.voiceStyleId)
     }
 
-    onVoiceStateUpdate(oldState: VoiceState, newState: VoiceState)
-    {
+    onVoiceStateUpdate(oldState: VoiceState, newState: VoiceState) {
         const vc = getVoiceConnection(newState.guild.id)
-        if(!vc) {
+        if (!vc) {
             return
         }
 
@@ -146,7 +145,7 @@ export class Zundacord {
         }
 
         const channel = newState.guild.channels.cache.find(c => c.id === vc.joinConfig.channelId)
-        if(channel === undefined || !channel.isVoiceBased()) {
+        if (channel === undefined || !channel.isVoiceBased()) {
             return
         }
 
@@ -539,7 +538,7 @@ export class Zundacord {
         })
     }
 
-    async renderMenuSelectVoiceSpeaker(selectedSpeakerUuid?: string): Promise<ActionRowBuilder<SelectMenuBuilder>> {
+    async renderMenuSelectVoiceSpeaker(selectedSpeakerUuid?: string): Promise<ActionRowBuilder<StringSelectMenuBuilder>> {
         const speakers = await this.voicevox.getSpeakers()
 
         if (!speakers.length) {
@@ -547,8 +546,8 @@ export class Zundacord {
         }
 
         // TODO: make pager
-        return new ActionRowBuilder<SelectMenuBuilder>()
-            .addComponents(new SelectMenuBuilder()
+        return new ActionRowBuilder<StringSelectMenuBuilder>()
+            .addComponents(new StringSelectMenuBuilder()
                 .setCustomId("speakerSelected")
                 .setPlaceholder("Choose the speaker...")
                 .addOptions(
