@@ -17,8 +17,8 @@ export function getReadableString(str: string): string {
     // FIXME: make this configurable per user
     ret = toKana(ret)
 
-    // seems voicevox reads spaces
-    ret = ret.trim()
+    // seems voicevox reads spaces, so lets remove them
+    ret = ret.replace(/[\s　]+/g, '');
 
     return ret
 }
