@@ -1,4 +1,5 @@
 import * as fs from 'node:fs/promises'
+import { getLang, Lang } from './i18n'
 import { logger } from './logger'
 
 const log = logger.child({ "module": "zundacord/config" })
@@ -15,6 +16,7 @@ interface GuildConfig {
 export interface MemberConfig {
     ttsEnabled: boolean
     voiceStyleId?: number
+    lang: Lang
 }
 
 export interface IConfigManager {
@@ -75,7 +77,8 @@ export class JsonConfig implements IConfigManager {
         // populate default value
         return {
             ttsEnabled: true,
-            ...rawConfig
+            ...rawConfig,
+            lang: getLang(rawConfig?.lang),
         }
     }
 

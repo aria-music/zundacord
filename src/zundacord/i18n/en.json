@@ -1,0 +1,76 @@
+{
+  "activity_watching": "Type /voice to start TTS",
+
+  "cmd_voice_description": "Set the speaker voice / style",
+  "cmd_voice_inspect_user_description": "specify username to get user's configurations",
+  "cmd_join_description": "Join the bot to the voice",
+  "cmd_summon_description": "Join the bot to the voice (alias of `/join`)",
+  "cmd_skip_description": "Skip the message reading now",
+  "cmd_disconnect_description": "Disconnect the bot from the voice",
+  "cmd_read_name": "Read this message",
+
+  "embed_error_title": "Internal error",
+  "embed_error_description": "Try again later",
+
+  "embed_join_already_title": "Already joined!",
+  "embed_join_already_description": "The bot is already in voice",
+
+  "embed_join_fail_guild_title": "Cannot join",
+  "embed_join_fail_guild_description": "You are not in guild",
+
+  "embed_join_fail_voice_title": "Cannot join",
+  "embed_join_fail_voice_description": "You need to join to the voice first",
+
+  "embed_join_success_title": "Joined!",
+  "embed_join_success_description": "Joined to {channelName}",
+
+  "embed_skip_fail_title": "Cannot skip",
+  "embed_skip_fail_description": "The bot is not in voice",
+
+  "embed_skip_success_title": "Skipped!",
+  "embed_skip_success_description": "Skipped the message",
+
+  "embed_disconnect_fail_title": "Cannot disconnect",
+  "embed_disconnect_fail_description": "The bot is not in voice",
+
+  "embed_disconnect_success_title": "Disconnected!",
+  "embed_disconnect_success_description": "The bot was disconnected successfully.",
+
+  "embed_read_fail_tts_title": "Cannot read the message",
+  "embed_read_fail_tts_description": "Enable TTS with /voice command first!",
+
+  "embed_read_fail_voice_title": "Cannot read the message",
+  "embed_read_fail_voice_description": "Set your voice with /voice command first!",
+
+  "embed_read_success_title": "Successfully enqueued!",
+  "embed_read_success_description": "The message is successfully enqueued to be read",
+
+  "embed_set_voice_fail_title": "Cannot set voice",
+  "embed_set_voice_fail_description": "Specified speaker / style is not found",
+
+  "embed_tos_title": "You need to agree to the terms of service",
+
+  "embed_voice_select_title": "Select your voice!",
+  "embed_voice_updated_title": "Voice is updated!",
+  "embed_tts_updated_title": "TTS configuration is updated!",
+
+  "embed_user_config_author": "{username}'s configuration",
+  "embed_user_config_description": "Showing {user}'s configuration",
+
+  "field_tts_enabled": "TTS Enabled",
+  "field_speaker": "Speaker",
+  "field_style": "Style",
+  "field_value_tts_enabled": ":arrow_forward: Enabled",
+  "field_value_tts_disabled": ":pause_button: Disabled",
+  "field_value_not_set": "(Not set)",
+
+  "button_tts_enable": "TTS: Enable",
+  "button_tts_disable": "TTS: Disable",
+
+  "select_speaker_placeholder": "Choose the speaker...",
+
+  "cmd_language_description": "Set your display language",
+  "cmd_language_option_description": "Language",
+  "cmd_language_set_title": "Language updated!",
+  "cmd_language_set_description": "Your display language has been set."
+}

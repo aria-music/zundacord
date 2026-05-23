@@ -1,0 +1,76 @@
+{
+  "activity_watching": "/voice で読み上げ設定",
+
+  "cmd_voice_description": "キャラクター, スタイルを設定します",
+  "cmd_voice_inspect_user_description": "他ユーザーの設定を確認",
+  "cmd_join_description": "ボットをボイスチャンネルに参加させます",
+  "cmd_summon_description": "ボットをボイスチャンネルに参加させます（`/join` のエイリアス）",
+  "cmd_skip_description": "現在の読み上げをスキップします",
+  "cmd_disconnect_description": "ボットをボイスチャンネルから切断します",
+  "cmd_read_name": "このメッセージを読み上げる",
+
+  "embed_error_title": "内部エラー",
+  "embed_error_description": "後でもう一度お試しください",
+
+  "embed_join_already_title": "参加済みです！",
+  "embed_join_already_description": "ボットはすでにボイスチャンネルにいます",
+
+  "embed_join_fail_guild_title": "参加できません",
+  "embed_join_fail_guild_description": "サーバーにいません",
+
+  "embed_join_fail_voice_title": "参加できません",
+  "embed_join_fail_voice_description": "ユーザーが先にボイスチャンネルに参加してください",
+
+  "embed_join_success_title": "参加しました！",
+  "embed_join_success_description": "{channelName} に参加しました",
+
+  "embed_skip_fail_title": "スキップできません",
+  "embed_skip_fail_description": "ボットがボイスチャンネルにいません",
+
+  "embed_skip_success_title": "スキップしました！",
+  "embed_skip_success_description": "メッセージをスキップしました",
+
+  "embed_disconnect_fail_title": "切断できません",
+  "embed_disconnect_fail_description": "ボットがボイスチャンネルにいません",
+
+  "embed_disconnect_success_title": "切断しました！",
+  "embed_disconnect_success_description": "ボットが正常に切断されました。",
+
+  "embed_read_fail_tts_title": "メッセージを読み上げられません",
+  "embed_read_fail_tts_description": "先に /voice コマンドで読み上げを有効にしてください！",
+
+  "embed_read_fail_voice_title": "メッセージを読み上げられません",
+  "embed_read_fail_voice_description": "先に /voice コマンドでボイスを設定してください！",
+
+  "embed_read_success_title": "キューに追加しました！",
+  "embed_read_success_description": "メッセージが読み上げキューに追加されました",
+
+  "embed_set_voice_fail_title": "ボイスを設定できません",
+  "embed_set_voice_fail_description": "指定したキャラクター・スタイルが見つかりません",
+
+  "embed_tos_title": "利用規約への同意が必要です",
+
+  "embed_voice_select_title": "ボイスを選択してください！",
+  "embed_voice_updated_title": "ボイスが更新されました！",
+  "embed_tts_updated_title": "読み上げ設定が更新されました！",
+
+  "embed_user_config_author": "{username} の設定",
+  "embed_user_config_description": "{user} の設定を表示しています",
+
+  "field_tts_enabled": "読み上げ",
+  "field_speaker": "キャラクター",
+  "field_style": "スタイル",
+  "field_value_tts_enabled": ":arrow_forward: 有効",
+  "field_value_tts_disabled": ":pause_button: 無効",
+  "field_value_not_set": "（未設定）",
+
+  "button_tts_enable": "読み上げ: 有効にする",
+  "button_tts_disable": "読み上げ: 無効にする",
+
+  "select_speaker_placeholder": "キャラクターを選択...",
+
+  "cmd_language_description": "表示言語を設定します",
+  "cmd_language_option_description": "言語",
+  "cmd_language_set_title": "言語を更新しました！",
+  "cmd_language_set_description": "表示言語を設定しました"
+}

@@ -1,6 +1,8 @@
 import { entersState, getVoiceConnection, joinVoiceChannel, VoiceConnectionStatus } from "@discordjs/voice"
 import { ActionRowBuilder, ActivityType, ApplicationCommandType, ButtonBuilder, ButtonInteraction, ButtonStyle, ChatInputCommandInteraction, Client, CommandInteraction, ContextMenuCommandBuilder, EmbedBuilder, GatewayIntentBits, Interaction, Message, MessageContextMenuCommandInteraction, Routes, SelectMenuInteraction, SlashCommandBuilder, SlashCommandUserOption, StringSelectMenuBuilder, User, VoiceState } from "discord.js"
 import { getReadableString } from "./utils"
+import { t, getLang, SUPPORTED_LANGS, DEFAULT_LANG, Lang } from "./i18n"
+
 import { StyledSpeaker, VoiceVoxClient } from "./voicevox"
 import { Player } from "./player"
 import { IConfigManager, JsonConfig } from "./config"
@@ -72,7 +74,7 @@ export class Zundacord {
 
         this.client.user?.setActivity({
             type: ActivityType.Watching,
-            name: "you! Type /voice to start TTS",
+            name: t(DEFAULT_LANG, "activity_watching"),
         })
         log.info("Ready!")
     }
@@ -161,7 +163,12 @@ export class Zundacord {
             user = inspectUser
         }
 
-        const memberConfig = await this.config.getMemberConfig(interaction.guildId, user.id)
+        const requesterConfig = await this.config.getMemberConfig(interaction.guildId, interaction.user.id)
+        const lang = requesterConfig.lang
+
+        const memberConfig = inspectUser
+            ? await this.config.getMemberConfig(interaction.guildId, user.id)
+            : requesterConfig
         let speaker: StyledSpeaker | undefined
         if (memberConfig?.voiceStyleId !== undefined) {
             speaker = await this.voicevox.getSpeakerById(`${memberConfig.voiceStyleId}`)
@@ -170,11 +177,11 @@ export class Zundacord {
         interaction.reply({
             ephemeral: true,
             embeds: [
-                this.renderEmbedUserConfigurations(speaker, inspectUser ?? undefined, memberConfig.ttsEnabled)
+                this.renderEmbedUserConfigurations(lang, speaker, inspectUser ?? undefined, memberConfig.ttsEnabled)
             ],
             components: !inspectUser ? [
-                this.renderButtonSelectTtsEnabled(memberConfig.ttsEnabled),
-                await this.renderMenuSelectVoiceSpeaker()
+                this.renderButtonSelectTtsEnabled(lang, memberConfig.ttsEnabled),
+                await this.renderMenuSelectVoiceSpeaker(lang)
             ] : undefined
         })
     }
@@ -205,6 +212,9 @@ export class Zundacord {
                 case "disconnect":
                     await this.slashDisconnect(interaction)
                     break
+                case "language":
+                    await this.slashLanguage(interaction)
+                    break
                 default:
                     log.debug(ctx, `unknown slash command: ${interaction.commandName}`)
                     throw new Error("unknown slash command (this is internal error)")
@@ -217,8 +227,8 @@ export class Zundacord {
                     embeds: [
                         zundaEmbed()
                             .setColor(COLOR_FAILURE)
-                            .setTitle("Internal error")
-                            .setDescription("Try again later")
+                            .setTitle(t(DEFAULT_LANG, "embed_error_title"))
+                            .setDescription(t(DEFAULT_LANG, "embed_error_description"))
                     ]
                 })
             } catch (e) {
@@ -238,6 +248,9 @@ export class Zundacord {
             commandName: interaction.commandName
         }
 
+        const memberConfig = await this.config.getMemberConfig(interaction.guildId, interaction.user.id)
+        const lang = memberConfig.lang
+
         const embed = (() => {
             // join the voice
             // check current voice
@@ -245,8 +258,8 @@ export class Zundacord {
                 log.debug(ctx, "already joined")
                 return zundaEmbed()
                     .setColor(COLOR_SUCCESS)
-                    .setTitle("Already joined!")
-                    .setDescription("The bot is already in voice")
+                    .setTitle(t(lang, "embed_join_already_title"))
+                    .setDescription(t(lang, "embed_join_already_description"))
             }
 
             // true join
@@ -256,8 +269,8 @@ export class Zundacord {
                 log.debug(ctx, "not in guild?")
                 return zundaEmbed()
                     .setColor(COLOR_FAILURE)
-                    .setTitle("Cannot join")
-                    .setDescription("You are not in guild")
+                    .setTitle(t(lang, "embed_join_fail_guild_title"))
+                    .setDescription(t(lang, "embed_join_fail_guild_description"))
             }
 
             const memberVoiceChannel = member.voice.channel
@@ -265,8 +278,8 @@ export class Zundacord {
                 log.debug(ctx, "member is not in voice")
                 return zundaEmbed()
                     .setColor(COLOR_FAILURE)
-                    .setTitle("Cannot join")
-                    .setDescription("You need to join to the voice first")
+                    .setTitle(t(lang, "embed_join_fail_voice_title"))
+                    .setDescription(t(lang, "embed_join_fail_voice_description"))
             }
 
             const vc = joinVoiceChannel({
@@ -306,8 +319,8 @@ export class Zundacord {
             log.debug(ctx, "joined!")
             return zundaEmbed()
                 .setColor(COLOR_SUCCESS)
-                .setTitle("Joined!")
-                .setDescription(`Joined to ${memberVoiceChannel.name}`)
+                .setTitle(t(lang, "embed_join_success_title"))
+                .setDescription(t(lang, "embed_join_success_description", { channelName: memberVoiceChannel.name }))
         })()
 
         interaction.reply({
@@ -325,22 +338,25 @@ export class Zundacord {
             commandName: interaction.commandName
         }
 
+        const memberConfig = await this.config.getMemberConfig(interaction.guildId, interaction.user.id)
+        const lang = memberConfig.lang
+
         const embed = (() => {
             const player = this.guildPlayers.get(interaction.guildId)
             if (!player) {
                 log.debug(ctx, "bot is not in voice")
                 return zundaEmbed()
                     .setColor(COLOR_FAILURE)
-                    .setTitle("Cannot skip")
-                    .setDescription("The bot is not in voice")
+                    .setTitle(t(lang, "embed_skip_fail_title"))
+                    .setDescription(t(lang, "embed_skip_fail_description"))
             }
 
             player.skipCurrentMessage()
             log.debug(ctx, "skipped")
             return zundaEmbed()
                 .setColor(COLOR_SUCCESS)
-                .setTitle("Skipped!")
-                .setDescription("Skipped the message")
+                .setTitle(t(lang, "embed_skip_success_title"))
+                .setDescription(t(lang, "embed_skip_success_description"))
         })()
 
         interaction.reply({
@@ -358,6 +374,9 @@ export class Zundacord {
             commandName: interaction.commandName
         }
 
+        const memberConfig = await this.config.getMemberConfig(interaction.guildId, interaction.user.id)
+        const lang = memberConfig.lang
+
         const embed = (() => {
             // disconnect from voice
             // check current voice state
@@ -365,8 +384,8 @@ export class Zundacord {
             if (!vc) {
                 return zundaEmbed()
                     .setColor(COLOR_FAILURE)
-                    .setTitle("Cannot disconnect")
-                    .setDescription("The bot is not in voice")
+                    .setTitle(t(lang, "embed_disconnect_fail_title"))
+                    .setDescription(t(lang, "embed_disconnect_fail_description"))
             }
 
             // true disconnect
@@ -377,14 +396,14 @@ export class Zundacord {
                 log.error({ ...ctx, err: e }, `unhandled error`)
                 return zundaEmbed()
                     .setColor(COLOR_FAILURE)
-                    .setTitle("Internal error")
-                    .setDescription("Try again later")
+                    .setTitle(t(lang, "embed_error_title"))
+                    .setDescription(t(lang, "embed_error_description"))
             }
             log.debug(ctx, `disconnected by ${ctx.user}`)
             return zundaEmbed()
                 .setColor(COLOR_SUCCESS)
-                .setTitle("Disconnected!")
-                .setDescription(`The bot was disconnected successfully.`)
+                .setTitle(t(lang, "embed_disconnect_success_title"))
+                .setDescription(t(lang, "embed_disconnect_success_description"))
         })()
 
         interaction.reply({
@@ -406,7 +425,7 @@ export class Zundacord {
 
         try {
             switch (interaction.commandName) {
-                case "Read this message":
+                case t(DEFAULT_LANG, "cmd_read_name"):
                     await this.contextMenuReadThisMessage(interaction)
                     break
                 default:
@@ -421,8 +440,8 @@ export class Zundacord {
                     embeds: [
                         zundaEmbed()
                             .setColor(COLOR_FAILURE)
-                            .setTitle("Internal error")
-                            .setDescription("Try again later")
+                            .setTitle(t(DEFAULT_LANG, "embed_error_title"))
+                            .setDescription(t(DEFAULT_LANG, "embed_error_description"))
                     ]
                 })
             } catch (e) {
@@ -434,6 +453,7 @@ export class Zundacord {
 
     async contextMenuReadThisMessage(interaction: MessageContextMenuCommandInteraction<"cached">) {
         const memberConfig = await this.config.getMemberConfig(interaction.guildId, interaction.user.id)
+        const lang = memberConfig.lang
 
         if (!memberConfig.ttsEnabled) {
             interaction.reply({
@@ -441,8 +461,8 @@ export class Zundacord {
                 embeds: [
                     zundaEmbed()
                         .setColor(COLOR_FAILURE)
-                        .setTitle("Cannot read the message")
-                        .setDescription("Enable TTS with /voice command first!")
+                        .setTitle(t(lang, "embed_read_fail_tts_title"))
+                        .setDescription(t(lang, "embed_read_fail_tts_description"))
                 ]
             })
             return
@@ -454,8 +474,8 @@ export class Zundacord {
                 embeds: [
                     zundaEmbed()
                         .setColor(COLOR_FAILURE)
-                        .setTitle("Cannot read the message")
-                        .setDescription("Set your voice with /voice command first!")
+                        .setTitle(t(lang, "embed_read_fail_voice_title"))
+                        .setDescription(t(lang, "embed_read_fail_voice_description"))
                 ]
             })
             return
@@ -467,8 +487,8 @@ export class Zundacord {
             embeds: [
                 zundaEmbed()
                     .setColor(COLOR_SUCCESS)
-                    .setTitle("Successfully enqueued!")
-                    .setDescription("The message is successfully enqueued to be read")
+                    .setTitle(t(lang, "embed_read_success_title"))
+                    .setDescription(t(lang, "embed_read_success_description"))
             ]
         })
     }
@@ -500,8 +520,8 @@ export class Zundacord {
                     embeds: [
                         zundaEmbed()
                             .setColor(COLOR_FAILURE)
-                            .setTitle("Internal error")
-                            .setDescription("Try again later")
+                            .setTitle(t(DEFAULT_LANG, "embed_error_title"))
+                            .setDescription(t(DEFAULT_LANG, "embed_error_description"))
                     ],
                     components: []
                 })
@@ -516,6 +536,7 @@ export class Zundacord {
         const speakerUuid = interaction.values[0]
 
         const currentMemberConfig = await this.config.getMemberConfig(interaction.guildId, interaction.user.id)
+        const lang = currentMemberConfig.lang
         let speaker: StyledSpeaker | undefined
         if (currentMemberConfig?.voiceStyleId !== undefined) {
             speaker = await this.voicevox.getSpeakerById(`${currentMemberConfig.voiceStyleId}`)
@@ -524,21 +545,21 @@ export class Zundacord {
 
         interaction.update({
             embeds: [
-                this.renderEmbedUserConfigurations(speaker, undefined, currentMemberConfig.ttsEnabled),
+                this.renderEmbedUserConfigurations(lang, speaker, undefined, currentMemberConfig.ttsEnabled),
                 zundaEmbed()
                     .setColor(COLOR_ACTION)
-                    .setTitle("You need to agree to the terms of service")
+                    .setTitle(t(lang, "embed_tos_title"))
                     .setDescription(info.policy)
             ],
             components: [
-                this.renderButtonSelectTtsEnabled(currentMemberConfig.ttsEnabled),
-                await this.renderMenuSelectVoiceSpeaker(speakerUuid),
+                this.renderButtonSelectTtsEnabled(lang, currentMemberConfig.ttsEnabled),
+                await this.renderMenuSelectVoiceSpeaker(lang, speakerUuid),
                 ...await this.renderButtonSelectVoiceSpeakerStyle(speakerUuid)
             ]
         })
     }
 
-    async renderMenuSelectVoiceSpeaker(selectedSpeakerUuid?: string): Promise<ActionRowBuilder<StringSelectMenuBuilder>> {
+    async renderMenuSelectVoiceSpeaker(lang: Lang, selectedSpeakerUuid?: string): Promise<ActionRowBuilder<StringSelectMenuBuilder>> {
         // FIXME: this slicing is temporary workaround until we get proper pager implementation
         const speakers = (await this.voicevox.getSpeakers()).slice(0, 25)
 
@@ -550,7 +571,7 @@ export class Zundacord {
         return new ActionRowBuilder<StringSelectMenuBuilder>()
             .addComponents(new StringSelectMenuBuilder()
                 .setCustomId("speakerSelected")
-                .setPlaceholder("Choose the speaker...")
+                .setPlaceholder(t(lang, "select_speaker_placeholder"))
                 .addOptions(
                     ...speakers.map((s) => {
                         return {
@@ -598,16 +619,16 @@ export class Zundacord {
         return rows
     }
 
-    renderButtonSelectTtsEnabled(currentTtsEnabled: boolean): ActionRowBuilder<ButtonBuilder> {
+    renderButtonSelectTtsEnabled(lang: Lang, currentTtsEnabled: boolean): ActionRowBuilder<ButtonBuilder> {
         return new ActionRowBuilder<ButtonBuilder>()
             .addComponents(
                 new ButtonBuilder()
-                    .setLabel("TTS: Enable")
+                    .setLabel(t(lang, "button_tts_enable"))
                     .setCustomId("ttsEnabledSelected/enable")
                     .setStyle(ButtonStyle.Success)
                     .setDisabled(currentTtsEnabled),
                 new ButtonBuilder()
-                    .setLabel("TTS: Disable")
+                    .setLabel(t(lang, "button_tts_disable"))
                     .setCustomId("ttsEnabledSelected/disable")
                     .setStyle(ButtonStyle.Danger)
                     .setDisabled(!currentTtsEnabled)
@@ -644,8 +665,8 @@ export class Zundacord {
                     embeds: [
                         zundaEmbed()
                             .setColor(COLOR_FAILURE)
-                            .setTitle("Internal error")
-                            .setDescription("Try again later")
+                            .setTitle(t(DEFAULT_LANG, "embed_error_title"))
+                            .setDescription(t(DEFAULT_LANG, "embed_error_description"))
                     ],
                     components: []
                 })
@@ -658,21 +679,23 @@ export class Zundacord {
     async buttonSpeakerStyleSeleceted(interaction: ButtonInteraction<"cached">) {
         const styleId = interaction.customId.replace(/^speakerStyleSelected\//, "")
 
+        const memberConfig = (await this.config.getMemberConfig(interaction.guildId, interaction.member.id))
+        const lang = memberConfig.lang
+
         const speaker = await this.voicevox.getSpeakerById(styleId)
         if (!speaker) {
             interaction.update({
                 embeds: [
                     zundaEmbed()
                         .setColor(COLOR_FAILURE)
-                        .setTitle("Cannot set voice")
-                        .setDescription("Specified speaker / style is not found")
+                        .setTitle(t(lang, "embed_set_voice_fail_title"))
+                        .setDescription(t(lang, "embed_set_voice_fail_description"))
                 ],
                 components: []
             })
             return
         }
 
-        const memberConfig = (await this.config.getMemberConfig(interaction.guildId, interaction.member.id))
         memberConfig.voiceStyleId = speaker.styleId
         this.config.setMemberConfig(interaction.guildId, interaction.user.id, memberConfig)
         // TODO: this is useless at this moment due to VOICEVOX engine's limitation
@@ -684,15 +707,15 @@ export class Zundacord {
 
         await interaction.update({
             embeds: [
-                this.renderEmbedUserConfigurations(speaker, undefined, currentMemberConfig.ttsEnabled, "Voice is updated!", COLOR_SUCCESS),
+                this.renderEmbedUserConfigurations(lang, speaker, undefined, currentMemberConfig.ttsEnabled, t(lang, "embed_voice_updated_title"), COLOR_SUCCESS),
                 zundaEmbed()
                     .setColor(COLOR_ACTION)
-                    .setTitle("You need to agree to the terms of service")
+                    .setTitle(t(lang, "embed_tos_title"))
                     .setDescription(info.policy)
             ],
             components: [
-                this.renderButtonSelectTtsEnabled(currentMemberConfig.ttsEnabled),
-                await this.renderMenuSelectVoiceSpeaker(speaker.speaker.speaker_uuid),
+                this.renderButtonSelectTtsEnabled(lang, currentMemberConfig.ttsEnabled),
+                await this.renderMenuSelectVoiceSpeaker(lang, speaker.speaker.speaker_uuid),
                 ...await this.renderButtonSelectVoiceSpeakerStyle(speaker.speaker.speaker_uuid)
             ]
         })
@@ -702,6 +725,7 @@ export class Zundacord {
         const enabled = interaction.customId.replace(/^ttsEnabledSelected\//, "") === "enable"
 
         const memberConfig = (await this.config.getMemberConfig(interaction.guildId, interaction.member.id))
+        const lang = memberConfig.lang
         memberConfig.ttsEnabled = enabled
         this.config.setMemberConfig(interaction.guildId, interaction.user.id, memberConfig)
 
@@ -711,63 +735,89 @@ export class Zundacord {
 
         await interaction.update({
             embeds: [
-                this.renderEmbedUserConfigurations(speaker, undefined, currentMemberConfig.ttsEnabled, "TTS configuration is updated!", COLOR_SUCCESS),
+                this.renderEmbedUserConfigurations(lang, speaker, undefined, currentMemberConfig.ttsEnabled, t(lang, "embed_tts_updated_title"), COLOR_SUCCESS),
                 ...info ? [zundaEmbed()
                     .setColor(COLOR_ACTION)
-                    .setTitle("You need to agree to the terms of service")
+                    .setTitle(t(lang, "embed_tos_title"))
                     .setDescription(info.policy)] : []
             ],
             components: [
-                this.renderButtonSelectTtsEnabled(currentMemberConfig.ttsEnabled),
-                await this.renderMenuSelectVoiceSpeaker(speaker?.speaker.speaker_uuid),
+                this.renderButtonSelectTtsEnabled(lang, currentMemberConfig.ttsEnabled),
+                await this.renderMenuSelectVoiceSpeaker(lang, speaker?.speaker.speaker_uuid),
                 ...speaker ? await this.renderButtonSelectVoiceSpeakerStyle(speaker.speaker.speaker_uuid) : []
             ]
         })
     }
 
-    renderEmbedUserConfigurations(speaker?: StyledSpeaker, inspectUser?: User, ttsEnabled?: boolean, title?: string, color?: number): EmbedBuilder {
+    renderEmbedUserConfigurations(lang: Lang, speaker?: StyledSpeaker, inspectUser?: User, ttsEnabled?: boolean, title?: string, color?: number): EmbedBuilder {
         const embedHeader = inspectUser ? zundaEmbed()
-            .setAuthor({ name: `${inspectUser.username}'s configuration`, iconURL: inspectUser.displayAvatarURL() })
-            .setDescription(`Showing ${inspectUser.toString()}'s configuration`)
+            .setAuthor({ name: t(lang, "embed_user_config_author", { username: inspectUser.username }), iconURL: inspectUser.displayAvatarURL() })
+            .setDescription(t(lang, "embed_user_config_description", { user: inspectUser.toString() }))
             : zundaEmbed()
-                .setTitle(title || "Select your voice!");
+                .setTitle(title || t(lang, "embed_voice_select_title"));
 
         return embedHeader
             .setColor(color || COLOR_ACTION)
             .setFields(
                 {
-                    "name": "TTS Enabled",
-                    "value": ttsEnabled ? ":arrow_forward: Enabled" : ":pause_button: Disabled",
+                    "name": t(lang, "field_tts_enabled"),
+                    "value": ttsEnabled ? t(lang, "field_value_tts_enabled") : t(lang, "field_value_tts_disabled"),
                     "inline": false
                 },
                 {
-                    "name": "Speaker",
-                    "value": speaker?.speaker.name || "(Not set)",
+                    "name": t(lang, "field_speaker"),
+                    "value": speaker?.speaker.name || t(lang, "field_value_not_set"),
                     "inline": true,
                 },
                 {
-                    "name": "Style",
-                    "value": speaker?.styleName || "(Not set)",
+                    "name": t(lang, "field_style"),
+                    "value": speaker?.styleName || t(lang, "field_value_not_set"),
                     "inline": true,
                 },
             )
+    }
+
+    async slashLanguage(interaction: ChatInputCommandInteraction<"cached">) {
+        const lang = interaction.options.getString("lang", true)
+
+        const memberConfig = await this.config.getMemberConfig(interaction.guildId, interaction.user.id)
+        const userLang = getLang(lang)
+        memberConfig.lang = userLang
+        await this.config.setMemberConfig(interaction.guildId, interaction.user.id, memberConfig)
+
+        await interaction.reply({
+            ephemeral: true,
+            embeds: [
+                zundaEmbed()
+                    .setColor(COLOR_SUCCESS)
+                    .setTitle(t(userLang, "cmd_language_set_title"))
+                    .setDescription(t(userLang, "cmd_language_set_description"))
+            ]
+        })
     }
 
     async registerCommands() {
         log.info("Registering commands...")
 
         const commands = [
-            new SlashCommandBuilder().setName("voice").setDescription("Set the speaker voice / style")
+            new SlashCommandBuilder().setName("voice").setDescription(t(DEFAULT_LANG, "cmd_voice_description"))
                 .addUserOption(
                     new SlashCommandUserOption()
                         .setName("inspect-user")
-                        .setDescription("specify username to get user's configurations")
+                        .setDescription(t(DEFAULT_LANG, "cmd_voice_inspect_user_description"))
                 ),
-            new SlashCommandBuilder().setName("join").setDescription("Join the bot to the voice"),
-            new SlashCommandBuilder().setName("summon").setDescription("Join the bot to the voice (alias of `/join`)"),
-            new SlashCommandBuilder().setName("skip").setDescription("Skip the message reading now"),
-            new SlashCommandBuilder().setName("disconnect").setDescription("Disconnect the bot from the voice"),
-            new ContextMenuCommandBuilder().setName("Read this message").setType(ApplicationCommandType.Message)
+            new SlashCommandBuilder().setName("join").setDescription(t(DEFAULT_LANG, "cmd_join_description")),
+            new SlashCommandBuilder().setName("summon").setDescription(t(DEFAULT_LANG, "cmd_summon_description")),
+            new SlashCommandBuilder().setName("skip").setDescription(t(DEFAULT_LANG, "cmd_skip_description")),
+            new SlashCommandBuilder().setName("disconnect").setDescription(t(DEFAULT_LANG, "cmd_disconnect_description")),
+            new SlashCommandBuilder().setName("language").setDescription(t(DEFAULT_LANG, "cmd_language_description"))
+                .addStringOption(opt => opt
+                    .setName("lang")
+                    .setDescription(t(DEFAULT_LANG, "cmd_language_option_description"))
+                    .setRequired(true)
+                    .addChoices(...SUPPORTED_LANGS.map(l => ({ name: l === 'ja' ? '日本語' : 'English', value: l })))
+                ),
+            new ContextMenuCommandBuilder().setName(t(DEFAULT_LANG, "cmd_read_name")).setType(ApplicationCommandType.Message)
         ].map(c => c.toJSON())
 
         await this.client.rest.put(
