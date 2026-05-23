@@ -2,7 +2,8 @@
   "activity_watching": "/voice で読み上げ設定",
 
   "cmd_voice_description": "キャラクター, スタイルを設定します",
-  "cmd_voice_inspect_user_description": "他ユーザーの設定を確認",
+  "cmd_inspect_description": "ユーザーの読み上げ設定を確認します",
+  "cmd_inspect_user_description": "確認するユーザー",
   "cmd_join_description": "ボットをボイスチャンネルに参加させます",
   "cmd_summon_description": "ボットをボイスチャンネルに参加させます（`/join` のエイリアス）",
   "cmd_skip_description": "現在の読み上げをスキップします",

@@ -166,23 +166,12 @@ export class Zundacord {
     }
 
     async slashVoice(interaction: ChatInputCommandInteraction<"cached">) {
-        let user = interaction.user
-
-        const inspectUser = interaction.options.getUser("inspect-user")
-        log.debug(`inspectUser: ${inspectUser}`)
-        if (inspectUser) {
-            user = inspectUser
-        }
-
         const requesterConfig = await this.config.getMemberConfig(interaction.guildId, interaction.user.id)
         const lang = requesterConfig.lang
 
-        const memberConfig = inspectUser
-            ? await this.config.getMemberConfig(interaction.guildId, user.id)
-            : requesterConfig
         let speaker: StyledSpeaker | undefined
-        if (memberConfig?.voiceStyleId !== undefined) {
-            speaker = await this.voicevox.getSpeakerById(`${memberConfig.voiceStyleId}`)
+        if (requesterConfig?.voiceStyleId !== undefined) {
+            speaker = await this.voicevox.getSpeakerById(`${requesterConfig.voiceStyleId}`)
         }
 
         const totalPages = await this.getSpeakerTotalPages()
@@ -190,12 +179,32 @@ export class Zundacord {
         interaction.reply({
             ephemeral: true,
             embeds: [
-                this.renderEmbedUserConfigurations(lang, speaker, inspectUser ?? undefined, memberConfig.ttsEnabled)
+                this.renderEmbedUserConfigurations(lang, speaker, undefined, requesterConfig.ttsEnabled)
             ],
-            components: !inspectUser ? [
-                this.renderButtonSelectTtsEnabled(lang, memberConfig.ttsEnabled, 0, totalPages),
+            components: [
+                this.renderButtonSelectTtsEnabled(lang, requesterConfig.ttsEnabled, 0, totalPages),
                 await this.renderMenuSelectVoiceSpeaker(lang, 0)
-            ] : undefined
+            ]
+        })
+    }
+
+    async slashInspect(interaction: ChatInputCommandInteraction<"cached">) {
+        const targetUser = interaction.options.getUser("user", true)
+
+        const requesterConfig = await this.config.getMemberConfig(interaction.guildId, interaction.user.id)
+        const lang = requesterConfig.lang
+
+        const memberConfig = await this.config.getMemberConfig(interaction.guildId, targetUser.id)
+        let speaker: StyledSpeaker | undefined
+        if (memberConfig?.voiceStyleId !== undefined) {
+            speaker = await this.voicevox.getSpeakerById(`${memberConfig.voiceStyleId}`)
+        }
+
+        interaction.reply({
+            ephemeral: true,
+            embeds: [
+                this.renderEmbedUserConfigurations(lang, speaker, targetUser, memberConfig.ttsEnabled)
+            ]
         })
     }
 
@@ -214,6 +223,9 @@ export class Zundacord {
             switch (interaction.commandName) {
                 case "voice":
                     await this.slashVoice(interaction)
+                    break
+                case "inspect":
+                    await this.slashInspect(interaction)
                     break
                 case "join":
                 case "summon":
@@ -868,11 +880,13 @@ export class Zundacord {
         log.info("Registering commands...")
 
         const commands = [
-            new SlashCommandBuilder().setName("voice").setDescription(t(DEFAULT_LANG, "cmd_voice_description"))
+            new SlashCommandBuilder().setName("voice").setDescription(t(DEFAULT_LANG, "cmd_voice_description")),
+            new SlashCommandBuilder().setName("inspect").setDescription(t(DEFAULT_LANG, "cmd_inspect_description"))
                 .addUserOption(
                     new SlashCommandUserOption()
-                        .setName("inspect-user")
-                        .setDescription(t(DEFAULT_LANG, "cmd_voice_inspect_user_description"))
+                        .setName("user")
+                        .setDescription(t(DEFAULT_LANG, "cmd_inspect_user_description"))
+                        .setRequired(true)
                 ),
             new SlashCommandBuilder().setName("join").setDescription(t(DEFAULT_LANG, "cmd_join_description")),
             new SlashCommandBuilder().setName("summon").setDescription(t(DEFAULT_LANG, "cmd_summon_description")),

@@ -2,7 +2,8 @@
   "activity_watching": "Type /voice to start TTS",
 
   "cmd_voice_description": "Set the speaker voice / style",
-  "cmd_voice_inspect_user_description": "specify username to get user's configurations",
+  "cmd_inspect_description": "Show a user's voice configuration",
+  "cmd_inspect_user_description": "User to inspect",
   "cmd_join_description": "Join the bot to the voice",
   "cmd_summon_description": "Join the bot to the voice (alias of `/join`)",
   "cmd_skip_description": "Skip the message reading now",
