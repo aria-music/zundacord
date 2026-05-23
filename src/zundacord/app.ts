@@ -12,8 +12,19 @@ const COLOR_SUCCESS = 0x47ff94
 const COLOR_FAILURE = 0xff4a47
 const COLOR_ACTION = 0x45b5ff
 const AUTO_DISCONNECT_TIMEOUT = 5000 //ms
+const SPEAKER_PAGE_SIZE = 25
 
 const log = logger.child({ "module": "zundacord/app" })
+
+interface CmdId {
+    c: string
+    p?: number
+    a?: string
+    s?: number
+}
+
+function encodeId(data: CmdId): string { return JSON.stringify(data) }
+function decodeId(customId: string): CmdId { return JSON.parse(customId) }
 
 
 function zundaEmbed(): EmbedBuilder {
@@ -174,14 +185,16 @@ export class Zundacord {
             speaker = await this.voicevox.getSpeakerById(`${memberConfig.voiceStyleId}`)
         }
 
+        const totalPages = await this.getSpeakerTotalPages()
+
         interaction.reply({
             ephemeral: true,
             embeds: [
                 this.renderEmbedUserConfigurations(lang, speaker, inspectUser ?? undefined, memberConfig.ttsEnabled)
             ],
             components: !inspectUser ? [
-                this.renderButtonSelectTtsEnabled(lang, memberConfig.ttsEnabled),
-                await this.renderMenuSelectVoiceSpeaker(lang)
+                this.renderButtonSelectTtsEnabled(lang, memberConfig.ttsEnabled, 0, totalPages),
+                await this.renderMenuSelectVoiceSpeaker(lang, 0)
             ] : undefined
         })
     }
@@ -505,9 +518,9 @@ export class Zundacord {
         log.debug(ctx, "handling select menu response")
 
         try {
-            const cmd = interaction.customId.split("/", 1)[0]
-            switch (cmd) {
-                case "speakerSelected":
+            const { c } = decodeId(interaction.customId)
+            switch (c) {
+                case "sp":
                     await this.selectMenuSpeakerSelected(interaction)
                     break
                 default:
@@ -534,6 +547,8 @@ export class Zundacord {
 
     async selectMenuSpeakerSelected(interaction: SelectMenuInteraction<"cached">) {
         const speakerUuid = interaction.values[0]
+        const { p = 0 } = decodeId(interaction.customId)
+        const page = p
 
         const currentMemberConfig = await this.config.getMemberConfig(interaction.guildId, interaction.user.id)
         const lang = currentMemberConfig.lang
@@ -542,6 +557,7 @@ export class Zundacord {
             speaker = await this.voicevox.getSpeakerById(`${currentMemberConfig.voiceStyleId}`)
         }
         const info = await this.voicevox.speakerInfo(speakerUuid)
+        const totalPages = await this.getSpeakerTotalPages()
 
         interaction.update({
             embeds: [
@@ -552,25 +568,24 @@ export class Zundacord {
                     .setDescription(info.policy)
             ],
             components: [
-                this.renderButtonSelectTtsEnabled(lang, currentMemberConfig.ttsEnabled),
-                await this.renderMenuSelectVoiceSpeaker(lang, speakerUuid),
-                ...await this.renderButtonSelectVoiceSpeakerStyle(speakerUuid)
+                this.renderButtonSelectTtsEnabled(lang, currentMemberConfig.ttsEnabled, page, totalPages),
+                await this.renderMenuSelectVoiceSpeaker(lang, page, speakerUuid),
+                ...await this.renderButtonSelectVoiceSpeakerStyle(speakerUuid, page)
             ]
         })
     }
 
-    async renderMenuSelectVoiceSpeaker(lang: Lang, selectedSpeakerUuid?: string): Promise<ActionRowBuilder<StringSelectMenuBuilder>> {
-        // FIXME: this slicing is temporary workaround until we get proper pager implementation
-        const speakers = (await this.voicevox.getSpeakers()).slice(0, 25)
+    async renderMenuSelectVoiceSpeaker(lang: Lang, page: number, selectedSpeakerUuid?: string): Promise<ActionRowBuilder<StringSelectMenuBuilder>> {
+        const allSpeakers = await this.voicevox.getSpeakers()
+        const speakers = allSpeakers.slice(page * SPEAKER_PAGE_SIZE, (page + 1) * SPEAKER_PAGE_SIZE)
 
         if (!speakers.length) {
             throw new Error("no voice provided from engine?")
         }
 
-        // TODO: make pager
         return new ActionRowBuilder<StringSelectMenuBuilder>()
             .addComponents(new StringSelectMenuBuilder()
-                .setCustomId("speakerSelected")
+                .setCustomId(encodeId({ c: "sp", p: page }))
                 .setPlaceholder(t(lang, "select_speaker_placeholder"))
                 .addOptions(
                     ...speakers.map((s) => {
@@ -587,7 +602,7 @@ export class Zundacord {
             )
     }
 
-    async renderButtonSelectVoiceSpeakerStyle(speakerUuid: string): Promise<ActionRowBuilder<ButtonBuilder>[]> {
+    async renderButtonSelectVoiceSpeakerStyle(speakerUuid: string, page: number): Promise<ActionRowBuilder<ButtonBuilder>[]> {
         const speaker = await this.voicevox.getSpeakerByUUID(speakerUuid)
         if (!speaker) {
             throw new Error(`speakerUuid does not exist: ${speakerUuid}`)
@@ -609,7 +624,7 @@ export class Zundacord {
                     ...speaker.styles.slice(i * page_size, (i + 1) * page_size).map((st) => {
                         return new ButtonBuilder()
                             .setLabel(st.name)
-                            .setCustomId(`speakerStyleSelected/${st.id}`)
+                            .setCustomId(encodeId({ c: "ss", s: st.id, p: page }))
                             .setStyle(ButtonStyle.Primary)
                     })
                 )
@@ -619,19 +634,29 @@ export class Zundacord {
         return rows
     }
 
-    renderButtonSelectTtsEnabled(lang: Lang, currentTtsEnabled: boolean): ActionRowBuilder<ButtonBuilder> {
+    renderButtonSelectTtsEnabled(lang: Lang, currentTtsEnabled: boolean, page: number, totalPages: number): ActionRowBuilder<ButtonBuilder> {
         return new ActionRowBuilder<ButtonBuilder>()
             .addComponents(
                 new ButtonBuilder()
                     .setLabel(t(lang, "button_tts_enable"))
-                    .setCustomId("ttsEnabledSelected/enable")
+                    .setCustomId(encodeId({ c: "te", a: "e", p: page }))
                     .setStyle(ButtonStyle.Success)
                     .setDisabled(currentTtsEnabled),
                 new ButtonBuilder()
                     .setLabel(t(lang, "button_tts_disable"))
-                    .setCustomId("ttsEnabledSelected/disable")
+                    .setCustomId(encodeId({ c: "te", a: "d", p: page }))
                     .setStyle(ButtonStyle.Danger)
-                    .setDisabled(!currentTtsEnabled)
+                    .setDisabled(!currentTtsEnabled),
+                new ButtonBuilder()
+                    .setLabel("◀")
+                    .setCustomId(encodeId({ c: "pg", p: page - 1 }))
+                    .setStyle(ButtonStyle.Secondary)
+                    .setDisabled(page === 0),
+                new ButtonBuilder()
+                    .setLabel("▶")
+                    .setCustomId(encodeId({ c: "pg", p: page + 1 }))
+                    .setStyle(ButtonStyle.Secondary)
+                    .setDisabled(page >= totalPages - 1),
             )
     }
 
@@ -647,13 +672,16 @@ export class Zundacord {
         log.debug(ctx, "handling button response")
 
         try {
-            const cmd = interaction.customId.split("/", 1)[0]
-            switch (cmd) {
-                case "speakerStyleSelected":
+            const { c } = decodeId(interaction.customId)
+            switch (c) {
+                case "ss":
                     await this.buttonSpeakerStyleSeleceted(interaction)
                     break
-                case "ttsEnabledSelected":
+                case "te":
                     await this.buttonTtsEnabledSelected(interaction)
+                    break
+                case "pg":
+                    await this.buttonSpeakerPageSelected(interaction)
                     break
                 default:
                     log.debug(ctx, `unknown button response customId: ${interaction.customId}`)
@@ -677,7 +705,9 @@ export class Zundacord {
     }
 
     async buttonSpeakerStyleSeleceted(interaction: ButtonInteraction<"cached">) {
-        const styleId = interaction.customId.replace(/^speakerStyleSelected\//, "")
+        const { s, p = 0 } = decodeId(interaction.customId)
+        const styleId = `${s}`
+        const page = p
 
         const memberConfig = (await this.config.getMemberConfig(interaction.guildId, interaction.member.id))
         const lang = memberConfig.lang
@@ -704,6 +734,7 @@ export class Zundacord {
 
         const currentMemberConfig = await this.config.getMemberConfig(interaction.guildId, interaction.user.id)
         const info = await this.voicevox.speakerInfo(speaker.speaker.speaker_uuid)
+        const totalPages = await this.getSpeakerTotalPages()
 
         await interaction.update({
             embeds: [
@@ -714,15 +745,17 @@ export class Zundacord {
                     .setDescription(info.policy)
             ],
             components: [
-                this.renderButtonSelectTtsEnabled(lang, currentMemberConfig.ttsEnabled),
-                await this.renderMenuSelectVoiceSpeaker(lang, speaker.speaker.speaker_uuid),
-                ...await this.renderButtonSelectVoiceSpeakerStyle(speaker.speaker.speaker_uuid)
+                this.renderButtonSelectTtsEnabled(lang, currentMemberConfig.ttsEnabled, page, totalPages),
+                await this.renderMenuSelectVoiceSpeaker(lang, page, speaker.speaker.speaker_uuid),
+                ...await this.renderButtonSelectVoiceSpeakerStyle(speaker.speaker.speaker_uuid, page)
             ]
         })
     }
 
     async buttonTtsEnabledSelected(interaction: ButtonInteraction<"cached">) {
-        const enabled = interaction.customId.replace(/^ttsEnabledSelected\//, "") === "enable"
+        const { a, p = 0 } = decodeId(interaction.customId)
+        const enabled = a === "e"
+        const page = p
 
         const memberConfig = (await this.config.getMemberConfig(interaction.guildId, interaction.member.id))
         const lang = memberConfig.lang
@@ -732,6 +765,7 @@ export class Zundacord {
         const currentMemberConfig = await this.config.getMemberConfig(interaction.guildId, interaction.user.id)
         const speaker = currentMemberConfig.voiceStyleId != undefined ? await this.voicevox.getSpeakerById(`${currentMemberConfig.voiceStyleId}`) : undefined
         const info = speaker ? await this.voicevox.speakerInfo(speaker.speaker.speaker_uuid) : undefined
+        const totalPages = await this.getSpeakerTotalPages()
 
         await interaction.update({
             embeds: [
@@ -742,9 +776,43 @@ export class Zundacord {
                     .setDescription(info.policy)] : []
             ],
             components: [
-                this.renderButtonSelectTtsEnabled(lang, currentMemberConfig.ttsEnabled),
-                await this.renderMenuSelectVoiceSpeaker(lang, speaker?.speaker.speaker_uuid),
-                ...speaker ? await this.renderButtonSelectVoiceSpeakerStyle(speaker.speaker.speaker_uuid) : []
+                this.renderButtonSelectTtsEnabled(lang, currentMemberConfig.ttsEnabled, page, totalPages),
+                await this.renderMenuSelectVoiceSpeaker(lang, page, speaker?.speaker.speaker_uuid),
+                ...speaker ? await this.renderButtonSelectVoiceSpeakerStyle(speaker.speaker.speaker_uuid, page) : []
+            ]
+        })
+    }
+
+    private async getSpeakerTotalPages(): Promise<number> {
+        const speakers = await this.voicevox.getSpeakers()
+        return Math.ceil(speakers.length / SPEAKER_PAGE_SIZE)
+    }
+
+    async buttonSpeakerPageSelected(interaction: ButtonInteraction<"cached">) {
+        const totalPages = await this.getSpeakerTotalPages()
+        const { p = 0 } = decodeId(interaction.customId)
+        const page = Math.min(Math.max(p, 0), totalPages - 1)
+
+        const currentMemberConfig = await this.config.getMemberConfig(interaction.guildId, interaction.user.id)
+        const lang = currentMemberConfig.lang
+        let speaker: StyledSpeaker | undefined
+        if (currentMemberConfig?.voiceStyleId !== undefined) {
+            speaker = await this.voicevox.getSpeakerById(`${currentMemberConfig.voiceStyleId}`)
+        }
+        const info = speaker ? await this.voicevox.speakerInfo(speaker.speaker.speaker_uuid) : undefined
+
+        await interaction.update({
+            embeds: [
+                this.renderEmbedUserConfigurations(lang, speaker, undefined, currentMemberConfig.ttsEnabled),
+                ...info ? [zundaEmbed()
+                    .setColor(COLOR_ACTION)
+                    .setTitle(t(lang, "embed_tos_title"))
+                    .setDescription(info.policy)] : []
+            ],
+            components: [
+                this.renderButtonSelectTtsEnabled(lang, currentMemberConfig.ttsEnabled, page, totalPages),
+                await this.renderMenuSelectVoiceSpeaker(lang, page, speaker?.speaker.speaker_uuid),
+                ...speaker ? await this.renderButtonSelectVoiceSpeakerStyle(speaker.speaker.speaker_uuid, page) : []
             ]
         })
     }
