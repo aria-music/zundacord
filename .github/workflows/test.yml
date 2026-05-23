@@ -13,14 +13,14 @@ jobs:
       contents: read
       packages: read
     steps:
-      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
 
-      - uses: actions/cache@e12d46a63a90f2fae62d114769bbf2a179198b5c
+      - uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae
         with:
           path: .npm
           key: ${{ runner.os }}-${{ hashFiles('package-lock.json') }}
 
-      - uses: devcontainers/ci@3d462823359c481c587cb7426f39775f24257115
+      - uses: devcontainers/ci@b63b30de439b47a52267f241112c5b453b673db5
         with:
           push: never
           runCmd: |
