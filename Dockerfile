@@ -1,6 +1,6 @@
 # ===== RUNTIME =====
 
-FROM node:18-bullseye as runtime
+FROM node:24-bookworm as runtime
 
 RUN apt-get update && export DEBIAN_FRONTEND=noninteractive && \
     apt-get -y install --no-install-recommends ffmpeg && \

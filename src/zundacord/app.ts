@@ -152,7 +152,7 @@ export class Zundacord {
         player.autoDisconnect(vc, channel, this.applicationId, AUTO_DISCONNECT_TIMEOUT);
     }
 
-    async slashVoice(interaction: CommandInteraction<"cached">) {
+    async slashVoice(interaction: ChatInputCommandInteraction<"cached">) {
         let user = interaction.user
 
         const inspectUser = interaction.options.getUser("inspect-user")

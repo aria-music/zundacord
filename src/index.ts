@@ -13,7 +13,7 @@ function main() {
         log.fatal("ZUNDACORD_DISCORD_TOKEN (env) is not set!")
         return
     }
-
+    
     const apiEndpoint = process.env.ZUNDACORD_VOICEVOX_API_ENDPOINT
     if (!apiEndpoint) {
         log.fatal("ZUNDACORD_VOICEVOX_API_ENDPOINT (env) is not set!")
