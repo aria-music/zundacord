@@ -5,6 +5,7 @@
   "cmd_inspect_description": "Show a user's voice configuration",
   "cmd_inspect_user_description": "User to inspect",
   "cmd_join_description": "Join the bot to the voice",
+  "cmd_join_channel_description": "Voice channel to join (defaults to your current channel)",
   "cmd_summon_description": "Join the bot to the voice (alias of `/join`)",
   "cmd_skip_description": "Skip the message reading now",
   "cmd_disconnect_description": "Disconnect the bot from the voice",

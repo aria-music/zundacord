@@ -5,6 +5,7 @@
   "cmd_inspect_description": "ユーザーの読み上げ設定を確認します",
   "cmd_inspect_user_description": "確認するユーザー",
   "cmd_join_description": "ボットをボイスチャンネルに参加させます",
+  "cmd_join_channel_description": "参加するボイスチャンネル（省略時は自身が参加中のチャンネル）",
   "cmd_summon_description": "ボットをボイスチャンネルに参加させます（`/join` のエイリアス）",
   "cmd_skip_description": "現在の読み上げをスキップします",
   "cmd_disconnect_description": "ボットをボイスチャンネルから切断します",

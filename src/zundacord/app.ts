@@ -1,5 +1,5 @@
 import { entersState, getVoiceConnection, joinVoiceChannel, VoiceConnectionStatus } from "@discordjs/voice"
-import { ActionRowBuilder, ActivityType, ApplicationCommandType, ButtonBuilder, ButtonInteraction, ButtonStyle, ChatInputCommandInteraction, Client, CommandInteraction, ContextMenuCommandBuilder, EmbedBuilder, GatewayIntentBits, Interaction, Message, MessageContextMenuCommandInteraction, Routes, SelectMenuInteraction, SlashCommandBuilder, SlashCommandUserOption, StringSelectMenuBuilder, User, VoiceState } from "discord.js"
+import { ActionRowBuilder, ActivityType, ApplicationCommandType, ButtonBuilder, ButtonInteraction, ButtonStyle, ChannelType, ChatInputCommandInteraction, Client, CommandInteraction, ContextMenuCommandBuilder, EmbedBuilder, GatewayIntentBits, Interaction, Message, MessageContextMenuCommandInteraction, Routes, SelectMenuInteraction, SlashCommandBuilder, SlashCommandChannelOption, SlashCommandUserOption, StringSelectMenuBuilder, User, VoiceState } from "discord.js"
 import { getReadableString } from "./utils"
 import { t, getLang, SUPPORTED_LANGS, DEFAULT_LANG, Lang } from "./i18n"
 
@@ -298,14 +298,16 @@ export class Zundacord {
                     .setDescription(t(lang, "embed_join_fail_guild_description"))
             }
 
-            const memberVoiceChannel = member.voice.channel
-            if (!memberVoiceChannel) {
+            const channelOption = (interaction as ChatInputCommandInteraction<"cached">).options.getChannel("channel")
+            const targetChannel = channelOption ?? member.voice.channel
+            if (!targetChannel) {
                 log.debug(ctx, "member is not in voice")
                 return zundaEmbed()
                     .setColor(COLOR_FAILURE)
                     .setTitle(t(lang, "embed_join_fail_voice_title"))
                     .setDescription(t(lang, "embed_join_fail_voice_description"))
             }
+            const memberVoiceChannel = targetChannel
 
             const vc = joinVoiceChannel({
                 guildId: interaction.guildId,
@@ -888,8 +890,22 @@ export class Zundacord {
                         .setDescription(t(DEFAULT_LANG, "cmd_inspect_user_description"))
                         .setRequired(true)
                 ),
-            new SlashCommandBuilder().setName("join").setDescription(t(DEFAULT_LANG, "cmd_join_description")),
-            new SlashCommandBuilder().setName("summon").setDescription(t(DEFAULT_LANG, "cmd_summon_description")),
+            new SlashCommandBuilder().setName("join").setDescription(t(DEFAULT_LANG, "cmd_join_description"))
+                .addChannelOption(
+                    new SlashCommandChannelOption()
+                        .setName("channel")
+                        .setDescription(t(DEFAULT_LANG, "cmd_join_channel_description"))
+                        .addChannelTypes(ChannelType.GuildVoice)
+                        .setRequired(false)
+                ),
+            new SlashCommandBuilder().setName("summon").setDescription(t(DEFAULT_LANG, "cmd_summon_description"))
+                .addChannelOption(
+                    new SlashCommandChannelOption()
+                        .setName("channel")
+                        .setDescription(t(DEFAULT_LANG, "cmd_join_channel_description"))
+                        .addChannelTypes(ChannelType.GuildVoice)
+                        .setRequired(false)
+                ),
             new SlashCommandBuilder().setName("skip").setDescription(t(DEFAULT_LANG, "cmd_skip_description")),
             new SlashCommandBuilder().setName("disconnect").setDescription(t(DEFAULT_LANG, "cmd_disconnect_description")),
             new SlashCommandBuilder().setName("language").setDescription(t(DEFAULT_LANG, "cmd_language_description"))
