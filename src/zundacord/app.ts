@@ -1,5 +1,5 @@
 import { entersState, getVoiceConnection, joinVoiceChannel, VoiceConnectionStatus } from "@discordjs/voice"
-import { ActionRowBuilder, ActivityType, ApplicationCommandType, ButtonBuilder, ButtonInteraction, ButtonStyle, ChannelType, ChatInputCommandInteraction, Client, CommandInteraction, ContextMenuCommandBuilder, EmbedBuilder, GatewayIntentBits, Interaction, Message, MessageContextMenuCommandInteraction, Routes, SelectMenuInteraction, SlashCommandBuilder, SlashCommandChannelOption, SlashCommandUserOption, StringSelectMenuBuilder, User, VoiceState } from "discord.js"
+import { ActionRowBuilder, ActivityType, ApplicationCommandType, ButtonBuilder, ButtonInteraction, ButtonStyle, ChannelType, ChatInputCommandInteraction, Client, CommandInteraction, ContextMenuCommandBuilder, EmbedBuilder, GatewayIntentBits, Guild, Interaction, Message, MessageContextMenuCommandInteraction, Routes, SelectMenuInteraction, SlashCommandBuilder, SlashCommandChannelOption, SlashCommandUserOption, StringSelectMenuBuilder, User, VoiceBasedChannel, VoiceState } from "discord.js"
 import { getReadableString } from "./utils"
 import { t, getLang, SUPPORTED_LANGS, DEFAULT_LANG, Lang } from "./i18n"
 
@@ -146,6 +146,17 @@ export class Zundacord {
     }
 
     onVoiceStateUpdate(oldState: VoiceState, newState: VoiceState) {
+        // auto-join: a non-bot user joined (or switched into) a voice channel
+        if (
+            !newState.member?.user.bot &&
+            newState.channel &&
+            oldState.channelId !== newState.channelId &&
+            !getVoiceConnection(newState.guild.id)
+        ) {
+            log.debug({ guildId: newState.guild.id, channelId: newState.channelId }, "auto-joining voice")
+            this.joinChannel(newState.guild, newState.channel)
+        }
+
         const vc = getVoiceConnection(newState.guild.id)
         if (!vc) {
             return
@@ -264,6 +275,42 @@ export class Zundacord {
 
     }
 
+    private joinChannel(guild: Guild, channel: VoiceBasedChannel): void {
+        const vc = joinVoiceChannel({
+            guildId: guild.id,
+            channelId: channel.id,
+            adapterCreator: guild.voiceAdapterCreator,
+        })
+        // register disconnection handler
+        vc.on(VoiceConnectionStatus.Disconnected, async (oldState, newState) => {
+            const vcCtx = {
+                guild: guild.name,
+                guildId: guild.id,
+                oldState: oldState,
+                newState: newState
+            }
+            log.info(vcCtx, `Disconnected from voice. Waiting...`)
+
+            try {
+                await Promise.race([
+                    entersState(vc, VoiceConnectionStatus.Signalling, 5000),
+                    entersState(vc, VoiceConnectionStatus.Connecting, 5000)
+                ])
+                log.info(vcCtx, `Reconnecting starts`)
+            } catch (e) {
+                // real disconnect (by user)
+                log.info(vcCtx, `Seems disconnected by user. Destroy.`)
+                vc.destroy()
+                // remove current audio player
+                this.guildPlayers.delete(guild.id)
+            }
+        })
+        // create audio player for this voice channel
+        const player = new Player(this.voicevox)
+        player.setStreamTarget(vc)
+        this.guildPlayers.set(guild.id, player)
+    }
+
     async slashJoin(interaction: CommandInteraction<"cached">) {
         const ctx = {
             guild: interaction.guild.name,
@@ -307,41 +354,16 @@ export class Zundacord {
                     .setTitle(t(lang, "embed_join_fail_voice_title"))
                     .setDescription(t(lang, "embed_join_fail_voice_description"))
             }
+            if (!targetChannel.isVoiceBased()) {
+                log.debug(ctx, "target channel is not a voice channel")
+                return zundaEmbed()
+                    .setColor(COLOR_FAILURE)
+                    .setTitle(t(lang, "embed_join_fail_voice_title"))
+                    .setDescription(t(lang, "embed_join_fail_voice_description"))
+            }
             const memberVoiceChannel = targetChannel
 
-            const vc = joinVoiceChannel({
-                guildId: interaction.guildId,
-                channelId: memberVoiceChannel.id,
-                adapterCreator: interaction.guild.voiceAdapterCreator
-            })
-            // register disconnection handler
-            vc.on(VoiceConnectionStatus.Disconnected, async (oldState, newState) => {
-                const vcCtx = {
-                    guild: interaction.guild.name,
-                    guildId: interaction.guildId,
-                    oldState: oldState,
-                    newState: newState
-                }
-                log.info(vcCtx, `Disconnected from voice. Waiting...`)
-
-                try {
-                    await Promise.race([
-                        entersState(vc, VoiceConnectionStatus.Signalling, 5000),
-                        entersState(vc, VoiceConnectionStatus.Connecting, 5000)
-                    ])
-                    log.info(vcCtx, `Reconnecting starts`)
-                } catch (e) {
-                    // real disconnect (by user)
-                    log.info(vcCtx, `Seems disconnected by user. Destroy.`)
-                    vc.destroy()
-                    // remove current audio player
-                    this.guildPlayers.delete(interaction.guildId)
-                }
-            })
-            // create audio player for this voice channel
-            const player = new Player(this.voicevox)
-            player.setStreamTarget(vc)
-            this.guildPlayers.set(interaction.guildId, player)
+            this.joinChannel(interaction.guild, memberVoiceChannel)
 
             log.debug(ctx, "joined!")
             return zundaEmbed()
